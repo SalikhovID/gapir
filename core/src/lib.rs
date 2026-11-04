@@ -4,4 +4,6 @@
 pub mod chunker;
 pub mod delivery;
 pub mod machine;
+pub mod settings;
 pub mod textfmt;
+pub mod version;
