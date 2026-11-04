@@ -2,3 +2,4 @@
 //! so it stays unit-testable and reusable when Linux and Windows are added.
 
 pub mod machine;
+pub mod textfmt;
