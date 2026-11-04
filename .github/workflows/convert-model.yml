@@ -11,6 +11,7 @@ permissions:
 env:
   MODEL_REPO: islomov/rubaistt_v2_medium
   MODEL_REVISION: af4601176140501f8ffbced420f6e2e23c9bb071
+  MODEL_SHA256: 849a13ed580f7e16e9b8a121d8a35fb9d1266a1ed8dd64fd8d52843bd46a0b55
   TRANSCRIBE_CPP_REF: v0.4.1
   QUANT: Q5_K_M
   RELEASE_TAG: model-rubaistt-v2-q5km
@@ -34,6 +35,7 @@ jobs:
             curl -fL --retry 5 -o "model/$file" \
               "https://huggingface.co/$MODEL_REPO/resolve/$MODEL_REVISION/$file"
           done
+          echo "$MODEL_SHA256  model/model.safetensors" | shasum -a 256 -c -
 
       - name: Convert to F32 GGUF
         run: |

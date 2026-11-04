@@ -11,10 +11,10 @@ use std::time::{Duration, Instant};
 use transcribe_cpp::{CancelToken, Model, RunOptions, Session, TimestampKind};
 
 pub const MODEL: ModelSpec = ModelSpec {
-    url: "https://huggingface.co/nizom333/rubaistt-v2-medium-gguf/resolve/main/rubaistt-v2-medium-Q8_0.gguf",
-    file_name: "rubaistt-v2-medium-Q8_0.gguf",
-    size: 831_538_240,
-    sha256: "2b7a482a4272699a7f54f8c85b48ea1adaefe6a93561a39f923c01a77104d333",
+    url: "https://github.com/SalikhovID/gapir/releases/download/model-rubaistt-v2-q5km/rubaistt-v2-medium-Q5_K_M.gguf",
+    file_name: "rubaistt-v2-medium-Q5_K_M.gguf",
+    size: 582_746_144,
+    sha256: "2ed32a824e45feb8ee84c57576068e0b90dbf92f5781271b17bb8dc5ac9d77b9",
 };
 
 const IDLE_UNLOAD: Duration = Duration::from_secs(10 * 60);

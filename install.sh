@@ -9,10 +9,10 @@ APP="Gapir.app"
 ARCHIVE="Gapir-macos-arm64.zip"
 RELEASE_URL="https://github.com/$REPO/releases/latest/download"
 
-MODEL_FILE="rubaistt-v2-medium-Q8_0.gguf"
-MODEL_URL="https://huggingface.co/nizom333/rubaistt-v2-medium-gguf/resolve/main/rubaistt-v2-medium-Q8_0.gguf"
-MODEL_SIZE=831538240
-MODEL_SHA256="2b7a482a4272699a7f54f8c85b48ea1adaefe6a93561a39f923c01a77104d333"
+MODEL_FILE="rubaistt-v2-medium-Q5_K_M.gguf"
+MODEL_URL="https://github.com/$REPO/releases/download/model-rubaistt-v2-q5km/$MODEL_FILE"
+MODEL_SIZE=582746144
+MODEL_SHA256="2ed32a824e45feb8ee84c57576068e0b90dbf92f5781271b17bb8dc5ac9d77b9"
 MODEL_DIR="$HOME/Library/Application Support/$BUNDLE_ID/models"
 
 fail() {

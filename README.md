@@ -10,7 +10,7 @@ Terminal'ni oching va shu buyruqni ishga tushiring:
 curl -fsSL https://raw.githubusercontent.com/SalikhovID/gapir/main/install.sh | bash
 ```
 
-Buyruq ilovani ham, taxminan 830 MB lik nutq modelini ham yuklaydi. Internet uzilsa, buyruqni qayta ishga tushiring: yuklash toʻxtagan joyidan davom etadi.
+Buyruq ilovani ham, taxminan 580 MB lik nutq modelini ham yuklaydi. Internet uzilsa, buyruqni qayta ishga tushiring: yuklash toʻxtagan joyidan davom etadi.
 
 Birinchi ochilishda Gapir ikki ruxsat soʻraydi:
 
