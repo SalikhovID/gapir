@@ -110,7 +110,7 @@ impl<V: Vad> Chunker<V> {
         self.pending.extend_from_slice(samples);
         let whole = self.pending.len() / FRAME * FRAME;
         let ready: Vec<f32> = self.pending.drain(..whole).collect();
-        for frame in ready.chunks_exact(FRAME) {
+        for frame in ready.as_chunks::<FRAME>().0 {
             chunks.extend(self.push_frame(frame));
         }
         chunks
@@ -265,8 +265,8 @@ mod tests {
         let second = [vec![-0.8; SAMPLE_RATE], silence(800)].concat();
         let chunks = c.push(&[first, second].concat());
         assert_eq!(chunks.len(), 2);
-        assert!(chunks[0].iter().any(|&s| s == 0.9) && !chunks[0].iter().any(|&s| s == -0.8));
-        assert!(chunks[1].iter().any(|&s| s == -0.8) && !chunks[1].iter().any(|&s| s == 0.9));
+        assert!(chunks[0].contains(&0.9) && !chunks[0].contains(&-0.8));
+        assert!(chunks[1].contains(&-0.8) && !chunks[1].contains(&0.9));
     }
 
     #[test]
