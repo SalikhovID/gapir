@@ -3,6 +3,7 @@
 
 pub mod chunker;
 pub mod delivery;
+pub mod engine;
 pub mod machine;
 pub mod model_store;
 pub mod settings;

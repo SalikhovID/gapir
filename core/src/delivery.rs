@@ -6,7 +6,9 @@ use std::time::Instant;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub trait Output {
-    /// The window that was focused when recording started still has focus.
+    /// Remembers the currently focused window as the destination of this session.
+    fn capture_target(&mut self);
+    /// The window remembered by `capture_target` still has focus.
     fn is_target_focused(&self) -> bool;
     /// macOS secure input is on (password field), so typed text would be swallowed.
     fn secure_input(&self) -> bool;
@@ -131,6 +133,7 @@ mod tests {
     }
 
     impl Output for Fake {
+        fn capture_target(&mut self) {}
         fn is_target_focused(&self) -> bool {
             !self.away
         }
