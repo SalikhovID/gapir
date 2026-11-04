@@ -1,0 +1,6 @@
+target/
+*.gguf
+*.gguf.part
+*.p12
+.DS_Store
+node_modules/
