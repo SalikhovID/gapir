@@ -7,5 +7,6 @@ description = "Platform-independent logic of Gapir: state machine, chunking, tex
 
 [dependencies]
 earshot = "1.2.2"
+unicode-segmentation = "1"
 
 [dev-dependencies]
