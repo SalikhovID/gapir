@@ -170,6 +170,7 @@ impl Keys {
         for signal in classifier.classify(event, &config) {
             match signal {
                 Signal::Machine(event) => {
+                    log::info!("key: {event:?}");
                     let _ = input.send(Input::Key(event));
                 }
                 Signal::UserInput => {

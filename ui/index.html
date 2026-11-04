@@ -1,1 +1,101 @@
-<!doctype html><html><body>Gapir</body></html>
+<!doctype html>
+<html lang="uz">
+  <head>
+    <meta charset="utf-8" />
+    <title>Gapir</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="drag" data-tauri-drag-region></div>
+    <main>
+      <header>
+        <h1>Gapir</h1>
+        <p>Oʻzbekcha gapiring, matn kursor turgan joyga yoziladi.</p>
+      </header>
+
+      <section id="setup" hidden>
+        <ol class="steps">
+          <li class="step" id="step-mic">
+            <span class="marker">1</span>
+            <div class="step-body">
+              <div class="step-row">
+                <h3>Mikrofon</h3>
+                <button class="action" id="mic-action">Ruxsat berish</button>
+              </div>
+              <p>Ovozingiz shu kompyuterda matnga oʻgiriladi va hech qayerga yuborilmaydi.</p>
+            </div>
+          </li>
+          <li class="step" id="step-access">
+            <span class="marker">2</span>
+            <div class="step-body">
+              <div class="step-row">
+                <h3>Accessibility</h3>
+                <button class="action" id="access-action">Ruxsat berish</button>
+              </div>
+              <p>Roʻyxatda Gapirʼni yoqing. Bu tugmalarni eshitish va matnni yozish uchun kerak.</p>
+            </div>
+          </li>
+          <li class="step" id="step-model">
+            <span class="marker">3</span>
+            <div class="step-body">
+              <div class="step-row">
+                <h3>Nutq modeli</h3>
+                <button class="action" id="model-action">Yuklab olish</button>
+              </div>
+              <p id="model-text">Bir marta yuklanadi, keyin internetsiz ishlaydi.</p>
+              <div class="progress" id="model-progress" hidden><div></div></div>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <section id="ready" hidden>
+        <div class="shortcuts">
+          <div class="keys" id="fn-keys"><kbd class="key">fn</kbd></div>
+          <p>Bosib turing va gapiring, qoʻyib yuborsangiz yozuv tugaydi.</p>
+
+          <div class="keys" id="toggle-keys"></div>
+          <p id="toggle-text">
+            Bir bosish boshlaydi, yana bosish toʻxtatadi.
+            <button class="link" id="change-hotkey">Oʻzgartirish</button>
+          </p>
+
+          <div class="keys"><kbd class="key small">esc</kbd></div>
+          <p>Yozish paytida bosilsa, aytilgan matn oʻchiriladi.</p>
+        </div>
+
+        <div class="tip" id="fn-tip" hidden>
+          <p>fn bosilganda layout almashsa, tizimda “Press 🌐 key to” ni “Do Nothing” qiling.</p>
+          <button class="action" id="fn-tip-action">Ochish</button>
+        </div>
+
+        <label class="field" for="try">Sinab koʻring</label>
+        <textarea id="try" placeholder="Kursorni shu yerga qoʻying, fn bosib turing va gapiring"></textarea>
+
+        <h2>Sozlamalar</h2>
+        <div class="row">
+          <label for="mic">Mikrofon</label>
+          <select id="mic"></select>
+        </div>
+        <div class="row">
+          <label for="fn-enabled">fn tugmasi bilan yozish</label>
+          <input class="switch" type="checkbox" role="switch" id="fn-enabled" />
+        </div>
+        <div class="row">
+          <label for="autostart">Kompyuter yoqilganda ishga tushsin</label>
+          <input class="switch" type="checkbox" role="switch" id="autostart" />
+        </div>
+        <div class="row">
+          <label for="sounds">Yozuv boshlanish va tugash ovozi</label>
+          <input class="switch" type="checkbox" role="switch" id="sounds" />
+        </div>
+        <div class="row">
+          <label for="update-check">Yangi versiyani tekshirish</label>
+          <input class="switch" type="checkbox" role="switch" id="update-check" />
+        </div>
+        <footer id="version"></footer>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

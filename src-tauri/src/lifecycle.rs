@@ -9,7 +9,7 @@ use tauri::menu::{
 };
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::{
-    include_image, ActivationPolicy, AppHandle, Manager, RunEvent, WebviewUrl,
+    include_image, ActivationPolicy, AppHandle, Manager, RunEvent, TitleBarStyle, WebviewUrl,
     WebviewWindowBuilder, Window, WindowEvent,
 };
 
@@ -152,9 +152,11 @@ pub fn show_main(app: &AppHandle) {
         }
         let window = WebviewWindowBuilder::new(&handle, MAIN, WebviewUrl::App("index.html".into()))
             .title("Gapir")
-            .inner_size(480.0, 640.0)
+            .inner_size(480.0, 770.0)
             .resizable(false)
             .maximizable(false)
+            .title_bar_style(TitleBarStyle::Overlay)
+            .hidden_title(true)
             .center()
             .build();
         match window {

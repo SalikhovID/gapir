@@ -73,10 +73,14 @@ impl Platform for Desktop {
         self.stt.clear();
     }
     fn show(&mut self, view: View) {
+        if !matches!(view, View::Recording { .. }) {
+            log::info!("view: {view:?}");
+        }
         overlay::show_view(&self.app, view);
         lifecycle::set_tray_view(&self.app, view);
     }
     fn notify(&mut self, notice: Notice) {
+        log::info!("notice: {notice:?}");
         overlay::notify(&self.app, notice);
     }
     fn set_last_text(&mut self, text: &str) {

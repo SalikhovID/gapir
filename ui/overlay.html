@@ -1,1 +1,102 @@
-<!doctype html><html><body>Gapir</body></html>
+<!doctype html>
+<html lang="uz">
+  <head>
+    <meta charset="utf-8" />
+    <title>Gapir</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: transparent;
+        overflow: hidden;
+        user-select: none;
+      }
+
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font: 500 14px/1 Optima, "Avenir Next", -apple-system, sans-serif;
+        color: #f5f0e1;
+      }
+
+      .pill {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        height: 44px;
+        padding: 0 18px;
+        border-radius: 22px;
+        background: rgb(15 46 77 / 96%);
+        box-shadow: inset 0 0 0 1px rgb(53 189 176 / 45%);
+        white-space: nowrap;
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      .dot {
+        flex: none;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #b7c3cd;
+      }
+
+      .recording .dot {
+        background: #e0484f;
+      }
+
+      .waiting .dot {
+        background: #e8b23a;
+      }
+
+      .bars {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        height: 22px;
+      }
+
+      .bars i {
+        width: 3px;
+        height: 100%;
+        border-radius: 2px;
+        background: #35bdb0;
+        transform: scaleY(0.12);
+      }
+
+      .time {
+        font-variant-numeric: tabular-nums;
+      }
+
+      .thinking .dot {
+        animation: breathe 1s ease-in-out infinite alternate;
+        background: #35bdb0;
+      }
+
+      @keyframes breathe {
+        from {
+          opacity: 0.35;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .thinking .dot {
+          animation: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="pill" id="pill" hidden>
+      <span class="dot"></span>
+      <span class="bars" id="bars" hidden></span>
+      <span id="text"></span>
+      <span class="time" id="time" hidden></span>
+    </div>
+    <script src="overlay.js"></script>
+  </body>
+</html>

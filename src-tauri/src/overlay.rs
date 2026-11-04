@@ -149,7 +149,7 @@ fn notice_text(notice: Notice) -> &'static str {
         Notice::LimitReached => "60 daqiqa limiti tugadi",
         Notice::MicLost => "Mikrofon ishlamadi",
         Notice::NoSpeech => "Ovoz eshitilmadi",
-        Notice::TextInMenu => "Matn menu'da: Oxirgi matnni nusxalash",
+        Notice::TextInMenu => "Matn menyuda: Oxirgi matnni nusxalash",
         Notice::RemovalRefused => "Matn oʻchirilmadi, kursor oʻzgargan",
         Notice::ChunkFailed => "Bir boʻlak matnga oʻgirilmadi",
     }

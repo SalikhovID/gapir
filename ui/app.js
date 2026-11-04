@@ -1,0 +1,193 @@
+const { invoke } = window.__TAURI__.core;
+const { listen } = window.__TAURI__.event;
+
+const $ = (id) => document.getElementById(id);
+const SYMBOLS = { Cmd: "⌘", Shift: "⇧", Alt: "⌥", Ctrl: "⌃" };
+
+let status = null;
+let capturing = false;
+let downloadError = null;
+
+function megabytes(bytes) {
+  return Math.round(bytes / 1_000_000);
+}
+
+function renderSteps() {
+  const steps = [
+    ["step-mic", status.mic === "granted"],
+    ["step-access", status.accessibility],
+    ["step-model", status.model_present],
+  ];
+  const firstOpen = steps.findIndex(([, done]) => !done);
+  steps.forEach(([id, done], index) => {
+    $(id).classList.toggle("done", done);
+    $(id).classList.toggle("current", index === firstOpen);
+    $(id).querySelector(".marker").textContent = done ? "✓" : String(index + 1);
+    $(id).querySelector(".action").hidden = done || index !== firstOpen;
+  });
+
+  const label = status.mic === "denied" ? "Sozlamani ochish" : "Ruxsat berish";
+  $("mic-action").textContent = label;
+
+  const action = $("model-action");
+  action.disabled = status.downloading;
+  action.textContent = downloadError ? "Qayta yuklash" : "Yuklab olish";
+  if (!status.downloading && !downloadError) {
+    $("model-text").textContent =
+      `Taxminan ${megabytes(status.model_size)} MB. Bir marta yuklanadi, keyin internetsiz ishlaydi.`;
+  }
+}
+
+function renderKeys(text) {
+  const box = $("toggle-keys");
+  box.replaceChildren();
+  for (const part of text.split("+")) {
+    const key = document.createElement("kbd");
+    key.className = "key";
+    key.textContent = SYMBOLS[part] ?? part;
+    box.append(key);
+  }
+}
+
+function renderSettings() {
+  const { settings } = status;
+  if (!capturing) {
+    renderKeys(settings.toggle_hotkey);
+  }
+  $("fn-keys").style.opacity = settings.fn_enabled ? 1 : 0.4;
+  $("fn-enabled").checked = settings.fn_enabled;
+  $("autostart").checked = settings.autostart;
+  $("sounds").checked = settings.sounds;
+  $("update-check").checked = settings.update_check;
+  $("mic").value = settings.mic_device ?? "";
+  $("fn-tip").hidden = !settings.fn_enabled || status.fn_usage === 0;
+  $("version").textContent = `Gapir ${status.version}`;
+}
+
+async function refresh() {
+  status = await invoke("get_status");
+  const ready = status.accessibility && status.mic === "granted" && status.model_present;
+  $("setup").hidden = ready;
+  $("ready").hidden = !ready;
+  if (ready) {
+    renderSettings();
+  } else {
+    renderSteps();
+  }
+}
+
+async function loadMics() {
+  const select = $("mic");
+  const auto = new Option("Avtomatik", "");
+  select.replaceChildren(auto, ...(await invoke("list_mics")).map((mic) => new Option(mic.name, mic.id)));
+}
+
+async function save(changes) {
+  try {
+    await invoke("save_settings", { settings: { ...status.settings, ...changes } });
+    await refresh();
+    return true;
+  } catch (message) {
+    $("toggle-text").firstChild.textContent = `${message}. `;
+    return false;
+  }
+}
+
+function hotkeyFrom(event) {
+  const code = event.code;
+  let key = null;
+  if (code.startsWith("Key")) key = code.slice(3);
+  else if (code.startsWith("Digit")) key = code.slice(5);
+  else if (/^F\d+$/.test(code) || code === "Space") key = code;
+
+  const modifiers = [];
+  if (event.ctrlKey) modifiers.push("Ctrl");
+  if (event.altKey) modifiers.push("Alt");
+  if (event.shiftKey) modifiers.push("Shift");
+  if (event.metaKey) modifiers.push("Cmd");
+  const hasStrongModifier = event.ctrlKey || event.altKey || event.metaKey;
+  return key && hasStrongModifier ? [...modifiers, key].join("+") : null;
+}
+
+const TOGGLE_HELP = "Bir bosish boshlaydi, yana bosish toʻxtatadi. ";
+
+async function stopCapture() {
+  capturing = false;
+  window.removeEventListener("keydown", onCaptureKey, true);
+  window.removeEventListener("blur", stopCapture);
+  $("toggle-keys").classList.remove("capture");
+  $("toggle-text").firstChild.textContent = TOGGLE_HELP;
+  await invoke("pause_hotkeys", { paused: false });
+  await refresh();
+}
+
+async function onCaptureKey(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.code === "Escape") {
+    await stopCapture();
+    return;
+  }
+  const hotkey = hotkeyFrom(event);
+  if (hotkey) {
+    await invoke("pause_hotkeys", { paused: false });
+    capturing = false;
+    window.removeEventListener("keydown", onCaptureKey, true);
+    window.removeEventListener("blur", stopCapture);
+    if (await save({ toggle_hotkey: hotkey })) {
+      $("toggle-text").firstChild.textContent = TOGGLE_HELP;
+    }
+    await refresh();
+  }
+}
+
+async function startCapture() {
+  capturing = true;
+  $("toggle-keys").replaceChildren();
+  $("toggle-text").firstChild.textContent = "Yangi birikmani bosing. Esc bekor qiladi. ";
+  await invoke("pause_hotkeys", { paused: true });
+  window.addEventListener("keydown", onCaptureKey, true);
+  window.addEventListener("blur", stopCapture);
+}
+
+$("mic-action").addEventListener("click", () => invoke("request_permission", { kind: "mic" }));
+$("access-action").addEventListener("click", () => invoke("request_permission", { kind: "accessibility" }));
+$("fn-tip-action").addEventListener("click", () => invoke("open_keyboard_settings"));
+$("change-hotkey").addEventListener("click", startCapture);
+
+$("model-action").addEventListener("click", async () => {
+  downloadError = null;
+  $("model-progress").hidden = false;
+  $("model-text").textContent = "Yuklanmoqda...";
+  await invoke("download_model");
+  await refresh();
+});
+
+$("mic").addEventListener("change", (event) => save({ mic_device: event.target.value || null }));
+$("fn-enabled").addEventListener("change", (event) => save({ fn_enabled: event.target.checked }));
+$("autostart").addEventListener("change", (event) => save({ autostart: event.target.checked }));
+$("sounds").addEventListener("change", (event) => save({ sounds: event.target.checked }));
+$("update-check").addEventListener("change", (event) => save({ update_check: event.target.checked }));
+
+listen("model-progress", ({ payload }) => {
+  const percent = (payload.done / payload.total) * 100;
+  $("model-progress").hidden = false;
+  $("model-progress").firstElementChild.style.width = `${percent}%`;
+  $("model-text").textContent = `${megabytes(payload.done)} / ${megabytes(payload.total)} MB`;
+});
+
+listen("model-done", async ({ payload }) => {
+  downloadError = payload.error;
+  $("model-progress").hidden = true;
+  if (downloadError) {
+    $("model-text").textContent = "Yuklab boʻlmadi. Internetni tekshirib, qayta urinib koʻring.";
+    $("model-text").classList.add("error");
+  } else {
+    $("model-text").classList.remove("error");
+  }
+  await refresh();
+  await loadMics();
+});
+
+loadMics().then(refresh);
+setInterval(refresh, 1500);
