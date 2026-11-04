@@ -29,6 +29,7 @@ const NOTICE_TIME: Duration = Duration::from_millis(2_800);
 
 /// A session is on screen; a notice must not hide the pill when it expires.
 static SESSION_VISIBLE: AtomicBool = AtomicBool::new(false);
+static NOTICE_ACTIVE: AtomicBool = AtomicBool::new(false);
 /// Only the latest notice may hide the pill.
 static NOTICE_GENERATION: AtomicU64 = AtomicU64::new(0);
 
@@ -128,19 +129,15 @@ pub fn show_view(app: &AppHandle, view: View) {
     emit(app, payload);
 
     let visible = view != View::Hidden;
-    SESSION_VISIBLE.store(visible, Ordering::SeqCst);
-    if visible {
+    let was_visible = SESSION_VISIBLE.swap(visible, Ordering::SeqCst);
+    if visible && !was_visible {
         set_visible(app, true);
-    } else {
-        // A notice raised at the end of the session keeps the pill until it expires.
-        let notice_active = NOTICE_ACTIVE.load(Ordering::SeqCst);
-        if !notice_active {
-            set_visible(app, false);
-        }
+    }
+    // A notice raised at the end of the session keeps the pill until it expires.
+    if !visible && !NOTICE_ACTIVE.load(Ordering::SeqCst) {
+        set_visible(app, false);
     }
 }
-
-static NOTICE_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 fn notice_text(notice: Notice) -> &'static str {
     match notice {

@@ -5,6 +5,7 @@ use gapir_core::engine::Input;
 use gapir_core::machine::Event;
 use handy_recorder::{AudioChunk, Recorder, RecorderConfig, Sink};
 use std::sync::mpsc::{self, Sender};
+use std::time::Instant;
 
 /// Marker in the CoreAudio device id of the Mac's own microphone.
 const BUILT_IN_MARKER: &str = "BuiltIn";
@@ -26,12 +27,17 @@ pub fn pick_device(setting: Option<&str>, device_ids: &[String]) -> Option<Strin
 struct AudioSink {
     input: Sender<Input>,
     started: bool,
+    opened_at: Instant,
 }
 
 impl Sink for AudioSink {
     fn process_chunk(&mut self, chunk: AudioChunk<'_>) {
         if !self.started {
             self.started = true;
+            log::info!(
+                "first audio after {} ms",
+                self.opened_at.elapsed().as_millis()
+            );
             let _ = self.input.send(Input::MicReady);
         }
         let _ = self
@@ -83,6 +89,7 @@ impl Mic {
 }
 
 fn open(setting: Option<&str>, input: &Sender<Input>) -> Option<Recorder<AudioSink>> {
+    let opened_at = Instant::now();
     let ids: Vec<String> = handy_recorder::list_input_devices()
         .map(|devices| devices.into_iter().map(|d| d.id).collect())
         .unwrap_or_default();
@@ -108,6 +115,7 @@ fn open(setting: Option<&str>, input: &Sender<Input>) -> Option<Recorder<AudioSi
     let sink = AudioSink {
         input: input.clone(),
         started: false,
+        opened_at,
     };
     if let Err(error) = recorder.start(sink) {
         log::error!("could not start recording: {}", error.error);

@@ -67,9 +67,11 @@ fn spawn_engine(
             let mic = Mic::new(input.clone());
             let broken_app = app.clone();
             let broken_shared = shared.clone();
-            let stt = Stt::new(shared.models_dir.clone(), input, move || {
+            let mut stt = Stt::new(shared.models_dir.clone(), input, move || {
                 on_model_broken(&broken_app, &broken_shared);
             });
+            // The first load after a reboot is slow. Doing it now spares the first dictation.
+            stt.prepare();
             let platform = Desktop::new(app.clone(), shared, mic, stt);
             let mut engine = Engine::new(platform, EarshotVad::new);
             let mut last_tick = Instant::now();
