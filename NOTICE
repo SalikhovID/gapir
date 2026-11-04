@@ -1,0 +1,13 @@
+Gapir
+Copyright (c) 2026 Salikhov ID. Licensed under the MIT License.
+
+Speech model
+  RubaiSTT v2 medium by Sardor Islomov
+  https://huggingface.co/islomov/rubaistt_v2_medium
+  Licensed under the Apache License 2.0. Gapir distributes a GGUF conversion of these
+  weights; the only change is the file format and quantization.
+
+Libraries
+  transcribe.cpp, handy-keys and handy-recorder by the Handy authors (MIT)
+  Tauri (MIT or Apache-2.0)
+  earshot voice activity detection by pyke.io (MIT or Apache-2.0)

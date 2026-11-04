@@ -1,0 +1,60 @@
+name: Convert model
+
+# Rebuilds the published GGUF from the original checkpoint, so the model file can be
+# reproduced from pinned inputs instead of trusted as an opaque binary.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  MODEL_REPO: islomov/rubaistt_v2_medium
+  MODEL_REVISION: af4601176140501f8ffbced420f6e2e23c9bb071
+  TRANSCRIBE_CPP_REF: v0.4.1
+  QUANT: Q5_K_M
+  RELEASE_TAG: model-rubaistt-v2-q5km
+
+jobs:
+  convert:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Fetch the converter
+        run: git clone --depth 1 --branch "$TRANSCRIBE_CPP_REF" https://github.com/handy-computer/transcribe.cpp
+
+      - name: Download the checkpoint
+        run: |
+          mkdir model
+          for file in config.json generation_config.json preprocessor_config.json added_tokens.json \
+            merges.txt normalizer.json special_tokens_map.json tokenizer_config.json vocab.json \
+            model.safetensors; do
+            curl -fL --retry 5 -o "model/$file" \
+              "https://huggingface.co/$MODEL_REPO/resolve/$MODEL_REVISION/$file"
+          done
+
+      - name: Convert to F32 GGUF
+        run: |
+          uv sync --project transcribe.cpp/scripts/envs/whisper
+          transcribe.cpp/scripts/envs/whisper/.venv/bin/python scripts/convert-model.py \
+            transcribe.cpp model rubaistt-v2-medium-F32.gguf
+
+      - name: Quantize
+        run: |
+          cmake -S transcribe.cpp -B build -DCMAKE_BUILD_TYPE=Release -DTRANSCRIBE_BUILD_TOOLS=ON
+          cmake --build build -j4 --target transcribe-quantize
+          build/bin/transcribe-quantize rubaistt-v2-medium-F32.gguf \
+            "rubaistt-v2-medium-$QUANT.gguf" --quant "$QUANT"
+          shasum -a 256 "rubaistt-v2-medium-$QUANT.gguf" | tee "rubaistt-v2-medium-$QUANT.gguf.sha256"
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$RELEASE_TAG" \
+            "rubaistt-v2-medium-$QUANT.gguf" "rubaistt-v2-medium-$QUANT.gguf.sha256" \
+            --latest=false \
+            --title "RubaiSTT v2 medium, $QUANT" \
+            --notes "GGUF conversion of [$MODEL_REPO](https://huggingface.co/$MODEL_REPO) at commit \`$MODEL_REVISION\`, quantized to $QUANT with transcribe.cpp $TRANSCRIBE_CPP_REF. Apache-2.0, weights by Sardor Islomov."
