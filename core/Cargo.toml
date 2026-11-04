@@ -6,5 +6,6 @@ license = "MIT"
 description = "Platform-independent logic of Gapir: state machine, chunking, text cleanup, delivery."
 
 [dependencies]
+earshot = "1.2.2"
 
 [dev-dependencies]
