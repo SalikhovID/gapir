@@ -2,6 +2,7 @@
 
 mod commands;
 mod desktop;
+mod grant;
 mod hotkeys;
 mod lifecycle;
 mod output;

@@ -1,7 +1,7 @@
 //! Commands called from the setup and settings window.
 
 use crate::stt::MODEL;
-use crate::{permissions, Shared};
+use crate::{grant, permissions, Shared};
 use gapir_core::model_store;
 use gapir_core::settings::Settings;
 use serde::Serialize;
@@ -55,13 +55,14 @@ pub fn list_mics() -> Vec<MicInfo> {
 }
 
 #[tauri::command]
-pub fn request_permission(kind: String) {
+pub fn request_permission(app: AppHandle, kind: String) {
     match kind.as_str() {
         "mic" if permissions::mic_status() == "unknown" => permissions::request_mic(),
         "mic" => permissions::open_pane("mic"),
         "accessibility" => {
             permissions::request_accessibility();
             permissions::open_pane("accessibility");
+            grant::show(&app);
         }
         _ => {}
     }
