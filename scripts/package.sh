@@ -30,6 +30,14 @@ echo "$MACOS_CERT_P12" | base64 --decode > "$work/cert.p12"
 security import "$work/cert.p12" -k "$keychain" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign -f pkcs12
 security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" >/dev/null
 
+# On macOS 26 codesign finds the identity only in keychains on the user's search list, whatever
+# --keychain says. Deleting the keychain in the trap takes it off the list again.
+searched=()
+while IFS= read -r path; do
+    searched+=("$path")
+done < <(security list-keychains -d user | sed -e 's/^[[:space:]]*"//' -e 's/"$//')
+security list-keychains -d user -s "$keychain" ${searched[@]+"${searched[@]}"}
+
 # The certificate is self-signed, so it is addressed by hash: it counts as "not trusted",
 # which only excludes it from name lookups.
 identity="$(security find-identity -p codesigning "$keychain" | awk '/\)/ {print $2; exit}')"
