@@ -15,6 +15,7 @@ cd "$(dirname "$0")/.."
 root="$PWD"
 bundle_dir="target/aarch64-apple-darwin/release/bundle/macos"
 
+python3 scripts/third-party-licenses.py > THIRD-PARTY-LICENSES.txt
 npx -y @tauri-apps/cli@2.12.4 build --target aarch64-apple-darwin --bundles app
 
 work="$(mktemp -d)"

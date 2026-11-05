@@ -1,13 +1,15 @@
 Gapir
-Copyright (c) 2026 Salikhov ID. Licensed under the MIT License.
+Copyright (c) 2026 Salikhov ID. Licensed under the MIT License, see LICENSE.
 
 Speech model
-  RubaiSTT v2 medium by Sardor Islomov
+  RubaiSTT v2 medium by Sardor Islomov, a fine-tune of OpenAI Whisper medium.
   https://huggingface.co/islomov/rubaistt_v2_medium
-  Licensed under the Apache License 2.0. Gapir distributes a GGUF conversion of these
-  weights; the only change is the file format and quantization.
+  Licensed under the Apache License 2.0, see LICENSES/Apache-2.0.txt
+  (LICENSE-Apache-2.0.txt inside the app and next to the published model).
 
-Libraries
-  transcribe.cpp, handy-keys and handy-recorder by the Handy authors (MIT)
-  Tauri (MIT or Apache-2.0)
-  earshot voice activity detection by pyke.io (MIT or Apache-2.0)
+  Gapir distributes a modified copy of these weights: they were converted to GGUF
+  and quantized to Q5_K_M. The model was not retrained.
+
+Third-party software
+  The libraries compiled into the app are listed with their full license texts
+  in THIRD-PARTY-LICENSES.txt.

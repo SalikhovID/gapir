@@ -69,4 +69,8 @@ Release qoʻlda yigʻiladi: [`scripts/package.sh`](scripts/package.sh) ilovani q
 
 ## Litsenziya
 
-MIT. Nutq modeli [RubaiSTT v2](https://huggingface.co/islomov/rubaistt_v2_medium), muallifi Sardor Islomov, Apache-2.0. Batafsil: [NOTICE](NOTICE).
+Gapir kodi: [MIT](LICENSE).
+
+Nutq modeli: [RubaiSTT v2 medium](https://huggingface.co/islomov/rubaistt_v2_medium), muallifi Sardor Islomov, [Apache-2.0](LICENSES/Apache-2.0.txt). Gapir shu modelning GGUF formatiga oʻtkazilgan va kvantlangan nusxasini tarqatadi, model qayta oʻqitilmagan.
+
+Batafsil: [NOTICE](NOTICE) va [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt).
