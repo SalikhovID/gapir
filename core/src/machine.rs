@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 
 /// `fn` must stay down this long before anything happens. A short press belongs to macOS, which
 /// uses it to switch the keyboard layout, so until then the app stays completely out of the way.
-pub const FN_HOLD_DELAY: Duration = Duration::from_secs(2);
+pub const FN_HOLD_DELAY: Duration = Duration::from_secs(1);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum State {
@@ -138,13 +138,13 @@ mod tests {
 
     #[test]
     fn a_short_fn_press_does_nothing() {
-        let (start, later) = at(1_999);
+        let (start, later) = at(999);
         assert_eq!(step(Armed { since: start }, FnUp, later), (Idle, vec![]));
     }
 
     #[test]
     fn the_end_of_the_delay_starts_hold_recording() {
-        let (start, later) = at(2_000);
+        let (start, later) = at(1_000);
         assert_eq!(
             step(Armed { since: start }, HoldElapsed, later),
             (RecHold, vec![StartRec])

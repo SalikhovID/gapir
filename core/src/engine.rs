@@ -117,6 +117,14 @@ impl<P: Platform, V: Vad> Engine<P, V> {
         self.state
     }
 
+    /// The moment a held `fn` turns into a recording, so the caller can wake up exactly then.
+    pub fn hold_deadline(&self) -> Option<Instant> {
+        match self.state {
+            State::Armed { since } => Some(since + FN_HOLD_DELAY),
+            _ => None,
+        }
+    }
+
     pub fn handle(&mut self, input: Input, now: Instant) {
         match input {
             Input::Key(event) => self.apply(event, now),
@@ -492,7 +500,7 @@ mod tests {
     fn nothing_happens_during_the_delay() {
         let mut r = Rig::new();
         r.send(Key(Event::FnDown));
-        r.wait(1_900);
+        r.wait(999);
         r.send(Tick);
         let w = r.world();
         assert!(!w.mic_on);
@@ -500,6 +508,28 @@ mod tests {
         assert_eq!(w.prepared, 0);
         assert!(!w.esc);
         assert!(w.views.is_empty());
+    }
+
+    #[test]
+    fn recording_starts_exactly_when_the_second_second_begins() {
+        let mut r = Rig::new();
+        r.send(Key(Event::FnDown));
+        r.wait(999);
+        r.send(Tick);
+        assert!(!r.world().mic_on);
+        r.wait(1);
+        r.send(Tick);
+        assert!(r.world().mic_on);
+    }
+
+    #[test]
+    fn the_engine_asks_to_be_woken_when_the_delay_ends() {
+        let mut r = Rig::new();
+        assert_eq!(r.engine.hold_deadline(), None);
+        r.send(Key(Event::FnDown));
+        assert_eq!(r.engine.hold_deadline(), Some(r.now + FN_HOLD_DELAY));
+        r.send(Key(Event::FnUp));
+        assert_eq!(r.engine.hold_deadline(), None);
     }
 
     #[test]

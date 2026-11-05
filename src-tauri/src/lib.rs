@@ -77,7 +77,11 @@ fn spawn_engine(
             let mut last_tick = Instant::now();
             let mut audio_chunks = 0u32;
             loop {
-                match receiver.recv_timeout(TICK) {
+                // A held `fn` must start recording on time, not at the next regular tick.
+                let wait = engine.hold_deadline().map_or(TICK, |deadline| {
+                    deadline.saturating_duration_since(Instant::now()).min(TICK)
+                });
+                match receiver.recv_timeout(wait) {
                     Ok(message) => {
                         if let Input::Audio(samples) = &message {
                             audio_chunks += 1;
@@ -90,7 +94,10 @@ fn spawn_engine(
                     Err(RecvTimeoutError::Timeout) => {}
                     Err(RecvTimeoutError::Disconnected) => return,
                 }
-                if last_tick.elapsed() >= TICK {
+                let hold_ended = engine
+                    .hold_deadline()
+                    .is_some_and(|deadline| Instant::now() >= deadline);
+                if hold_ended || last_tick.elapsed() >= TICK {
                     last_tick = Instant::now();
                     engine.handle(Input::Tick, last_tick);
                 }

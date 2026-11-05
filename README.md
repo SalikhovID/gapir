@@ -1,6 +1,6 @@
 # Gapir
 
-Mac uchun oʻzbekcha ovozli yozuv. Istalgan matn maydonida `fn` tugmasini 2 soniya bosib turing va gapiring, aytganingiz kursor turgan joyga yoziladi. Ovoz shu kompyuterda matnga oʻgiriladi va hech qayerga yuborilmaydi.
+Mac uchun oʻzbekcha ovozli yozuv. Istalgan matn maydonida `fn` tugmasini 1 soniya bosib turing va gapiring, aytganingiz kursor turgan joyga yoziladi. Ovoz shu kompyuterda matnga oʻgiriladi va hech qayerga yuborilmaydi.
 
 ## Oʻrnatish
 
@@ -23,7 +23,7 @@ Apple Silicon (M1 va undan yangi) va macOS 13 yoki undan yangisi kerak.
 
 | Tugma | Amal |
 |---|---|
-| `fn` 2 soniya bosib turish | Ekran pastida belgi chiqqach gapirasiz, qoʻyib yuborsangiz yozuv tugaydi |
+| `fn` 1 soniya bosib turish | Ekran pastida belgi chiqqach gapirasiz, qoʻyib yuborsangiz yozuv tugaydi |
 | `⌘⇧G` | Bir bosish yozishni boshlaydi, yana bosish toʻxtatadi |
 | `Esc` | Yozish paytida bosilsa, yozuv bekor boʻladi va yozilgan matn oʻchadi |
 
