@@ -71,15 +71,28 @@ jobs:
 
       - name: Check the build
         env:
+          GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.version.outputs.number }}
         run: |
+          check() { "$@" || { echo "::error::check failed: $*"; exit 1; }; }
+          requirement() { codesign -d -r- "$1" 2>&1 | grep '^designated'; }
+
           app=target/aarch64-apple-darwin/release/bundle/macos/Gapir.app
           binary="$app/Contents/MacOS/gapir"
-          [ "$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")" = "$VERSION" ]
-          [ "$(lipo -archs "$binary")" = "arm64" ]
+          check [ "$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")" = "$VERSION" ]
+          check [ "$(lipo -archs "$binary")" = "arm64" ]
           # install.sh promises macOS 13, so the build must not ask for more.
-          vtool -show-build "$binary" | grep -q 'minos 13.0'
-          shasum -a 256 -c Gapir-macos-arm64.zip.sha256
+          check [ "$(vtool -show-build "$binary" | awk '/minos/ {print $2}')" = "13.0" ]
+          check shasum -a 256 -c Gapir-macos-arm64.zip.sha256
+
+          # Another certificate would make macOS forget the Microphone and Accessibility
+          # permissions at every update, so the signature has to match the last release.
+          previous="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
+          if [ -n "$previous" ]; then
+            gh release download "$previous" --pattern Gapir-macos-arm64.zip --dir "$RUNNER_TEMP/previous"
+            ditto -x -k "$RUNNER_TEMP/previous/Gapir-macos-arm64.zip" "$RUNNER_TEMP/previous/unpacked"
+            check [ "$(requirement "$app")" = "$(requirement "$RUNNER_TEMP/previous/unpacked/Gapir.app")" ]
+          fi
 
       - name: Publish
         env:
