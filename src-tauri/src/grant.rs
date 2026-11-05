@@ -2,17 +2,20 @@
 //! app icon. Dropping the icon on the permission list adds Gapir there already switched on, so the
 //! user does not have to find it in a long list.
 
-use crate::permissions;
+use crate::{lifecycle, permissions};
+use block2::RcBlock;
 use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, NSObjectProtocol, ProtocolObject};
 use objc2::{define_class, msg_send, AllocAnyThread, MainThreadMarker, MainThreadOnly};
 use objc2_app_kit::{
-    NSBackingStoreType, NSColor, NSControl, NSDragOperation, NSDraggingContext, NSDraggingItem,
-    NSDraggingSession, NSDraggingSource, NSEvent, NSFloatingWindowLevel, NSFont, NSImageView,
+    NSAnimatablePropertyContainer, NSAnimationContext, NSApplication, NSBackingStoreType, NSColor,
+    NSControl, NSDragOperation, NSDraggingContext, NSDraggingItem, NSDraggingSession,
+    NSDraggingSource, NSEvent, NSFloatingWindowLevel, NSFont, NSImage, NSImageScaling, NSImageView,
     NSPanel, NSResponder, NSScreen, NSTextField, NSView, NSWindowStyleMask,
     NSWindowTitleVisibility, NSWorkspace,
 };
-use objc2_core_foundation::CFArray;
+use objc2_application_services::AXUIElement;
+use objc2_core_foundation::{kCFBooleanTrue, CFArray, CFString};
 use objc2_core_graphics::{CGWindowListCopyWindowInfo, CGWindowListOption};
 use objc2_foundation::{
     ns_string, NSArray, NSBundle, NSDictionary, NSNumber, NSObject, NSPoint, NSRect, NSSize,
@@ -24,19 +27,36 @@ use std::time::{Duration, Instant};
 use tauri::AppHandle;
 
 const SETTINGS_APP: &str = "com.apple.systempreferences";
-const WIDTH: f64 = 360.0;
-const HEIGHT: f64 = 84.0;
-const ICON: f64 = 56.0;
+const WIDTH: f64 = 380.0;
+const HEIGHT: f64 = 96.0;
+const ICON: f64 = 64.0;
+const ICON_X: f64 = 18.0;
+const ICON_Y: f64 = (HEIGHT - ICON) / 2.0;
+/// How far the icon bobs up, pointing at the list above.
+const BOB: f64 = 7.0;
 const GAP: f64 = 12.0;
-const POLL: Duration = Duration::from_millis(300);
+/// Also the length of one bob, so the motion never stops between ticks.
+const POLL: Duration = Duration::from_millis(450);
+const SUCCESS_TIME: Duration = Duration::from_millis(1_300);
+const FADE: f64 = 0.3;
 /// The helper never lingers, even if the user walks away from System Settings.
 const GIVE_UP: Duration = Duration::from_secs(10 * 60);
 
 static ACTIVE: AtomicBool = AtomicBool::new(false);
 
+struct Helper {
+    panel: Retained<NSPanel>,
+    icon: Retained<GrantIcon>,
+    title: Retained<NSTextField>,
+    hint: Retained<NSTextField>,
+    /// Where the panel was last placed, to tell a moved Settings window from a steady one.
+    origin: Option<NSPoint>,
+    bob_up: bool,
+}
+
 thread_local! {
     /// Touched on the main thread only.
-    static PANEL: RefCell<Option<Retained<NSPanel>>> = const { RefCell::new(None) };
+    static HELPER: RefCell<Option<Helper>> = const { RefCell::new(None) };
 }
 
 define_class!(
@@ -96,11 +116,13 @@ impl GrantIcon {
         let icon: Retained<Self> = unsafe { msg_send![Self::alloc(mtm), initWithFrame: frame] };
         let path = NSBundle::mainBundle().bundlePath();
         icon.setImage(Some(&NSWorkspace::sharedWorkspace().iconForFile(&path)));
+        icon.setImageScaling(NSImageScaling::ScaleProportionallyUpOrDown);
         icon
     }
 }
 
-/// Shows the helper next to System Settings until Accessibility is granted.
+/// Shows the helper next to System Settings until Accessibility is granted, then celebrates and
+/// brings the Gapir window back.
 pub fn show(app: &AppHandle) {
     if ACTIVE.swap(true, Ordering::SeqCst) {
         return;
@@ -112,9 +134,28 @@ pub fn show(app: &AppHandle) {
             let _ = app.run_on_main_thread(follow_settings);
             std::thread::sleep(POLL);
         }
-        let _ = app.run_on_main_thread(close);
+        if permissions::accessibility() {
+            let _ = app.run_on_main_thread(celebrate);
+            std::thread::sleep(SUCCESS_TIME);
+            let _ = app.run_on_main_thread(fade_out);
+            std::thread::sleep(Duration::from_secs_f64(FADE));
+            let _ = app.run_on_main_thread(close);
+            lifecycle::show_main(&app);
+            let _ = app.run_on_main_thread(take_focus);
+        } else {
+            let _ = app.run_on_main_thread(close);
+        }
         ACTIVE.store(false, Ordering::SeqCst);
     });
+}
+
+fn animate(duration: f64, changes: impl Fn() + 'static) {
+    let group = RcBlock::new(move |context: std::ptr::NonNull<NSAnimationContext>| {
+        // SAFETY: AppKit passes the live animation context for this group.
+        unsafe { context.as_ref() }.setDuration(duration);
+        changes();
+    });
+    NSAnimationContext::runAnimationGroup_completionHandler(&group, None);
 }
 
 fn follow_settings() {
@@ -122,26 +163,120 @@ fn follow_settings() {
         return;
     };
     let window = settings_window();
-    PANEL.with_borrow_mut(|slot| match window {
-        Some(window) => {
-            let panel = slot.get_or_insert_with(|| build(mtm));
-            panel.setFrameOrigin(origin(window, mtm));
-            panel.orderFrontRegardless();
-        }
-        None => {
-            if let Some(panel) = slot {
-                panel.orderOut(None);
+    HELPER.with_borrow_mut(|slot| {
+        let Some(window) = window else {
+            if let Some(helper) = slot {
+                helper.panel.orderOut(None);
+                helper.origin = None;
             }
+            return;
+        };
+        let helper = slot.get_or_insert_with(|| build(mtm));
+        let target = origin(window, mtm);
+        match helper.origin {
+            // Appears: slides up and fades in.
+            None => {
+                let panel = helper.panel.clone();
+                panel.setAlphaValue(0.0);
+                panel.setFrameOrigin(NSPoint::new(target.x, target.y - 24.0));
+                panel.orderFrontRegardless();
+                animate(0.35, move || {
+                    let proxy = panel.animator();
+                    proxy.setAlphaValue(1.0);
+                    proxy.setFrame_display(NSRect::new(target, panel.frame().size), true);
+                });
+            }
+            // Settings moved: follow it at once.
+            Some(placed) if placed != target => helper.panel.setFrameOrigin(target),
+            Some(_) => {}
         }
+        helper.origin = Some(target);
+
+        helper.bob_up = !helper.bob_up;
+        let icon = helper.icon.clone();
+        let y = if helper.bob_up { ICON_Y + BOB } else { ICON_Y };
+        animate(POLL.as_secs_f64(), move || {
+            icon.animator().setFrameOrigin(NSPoint::new(ICON_X, y));
+        });
+    });
+}
+
+/// Swaps the app icon for a green check that pops in, so the grant is plain to see.
+fn celebrate() {
+    HELPER.with_borrow_mut(|slot| {
+        let Some(helper) = slot else {
+            return;
+        };
+        if helper.origin.is_none() {
+            return;
+        }
+        if let Some(check) = NSImage::imageWithSystemSymbolName_accessibilityDescription(
+            ns_string!("checkmark.circle.fill"),
+            None,
+        ) {
+            helper.icon.setImage(Some(&check));
+            helper
+                .icon
+                .setContentTintColor(Some(&NSColor::systemGreenColor()));
+        }
+        helper.title.setStringValue(ns_string!("Ruxsat berildi"));
+        helper
+            .hint
+            .setStringValue(ns_string!("Gapir oynasiga qaytamiz."));
+        let icon = helper.icon.clone();
+        let full = NSRect::new(NSPoint::new(ICON_X, ICON_Y), NSSize::new(ICON, ICON));
+        let small = 20.0;
+        icon.setFrame(NSRect::new(
+            NSPoint::new(ICON_X + small / 2.0, ICON_Y + small / 2.0),
+            NSSize::new(ICON - small, ICON - small),
+        ));
+        animate(0.35, move || icon.animator().setFrame(full));
+    });
+}
+
+fn fade_out() {
+    HELPER.with_borrow(|slot| {
+        let Some(helper) = slot else {
+            return;
+        };
+        let panel = helper.panel.clone();
+        animate(FADE, move || {
+            let frame = panel.frame();
+            let proxy = panel.animator();
+            proxy.setAlphaValue(0.0);
+            proxy.setFrame_display(
+                NSRect::new(
+                    NSPoint::new(frame.origin.x, frame.origin.y - 16.0),
+                    frame.size,
+                ),
+                true,
+            );
+        });
     });
 }
 
 fn close() {
-    PANEL.with_borrow_mut(|slot| {
-        if let Some(panel) = slot.take() {
-            panel.close();
+    HELPER.with_borrow_mut(|slot| {
+        if let Some(helper) = slot.take() {
+            helper.panel.close();
         }
     });
+}
+
+/// System Settings is the active app and may refuse a plain activation request. Accessibility is
+/// granted by now, so Gapir can raise itself the way the user would.
+fn take_focus() {
+    let Some(mtm) = MainThreadMarker::new() else {
+        return;
+    };
+    NSApplication::sharedApplication(mtm).activate();
+    // SAFETY: our own process id, and a static CFBoolean value.
+    unsafe {
+        let me = AXUIElement::new_application(std::process::id() as i32);
+        if let Some(yes) = kCFBooleanTrue {
+            me.set_attribute_value(&CFString::from_static_str("AXFrontmost"), yes);
+        }
+    }
 }
 
 /// Frame of the front System Settings window in top-left screen coordinates, while it is the
@@ -208,7 +343,7 @@ fn origin(window: NSRect, mtm: MainThreadMarker) -> NSPoint {
     NSPoint::new(x, if below >= floor { below } else { bottom + GAP })
 }
 
-fn build(mtm: MainThreadMarker) -> Retained<NSPanel> {
+fn build(mtm: MainThreadMarker) -> Helper {
     let style = NSWindowStyleMask::Titled
         | NSWindowStyleMask::FullSizeContentView
         | NSWindowStyleMask::NonactivatingPanel;
@@ -232,32 +367,37 @@ fn build(mtm: MainThreadMarker) -> Retained<NSPanel> {
     let content = panel.contentView().expect("panel has a content view");
     let icon = GrantIcon::new(
         mtm,
-        NSRect::new(
-            NSPoint::new(16.0, (HEIGHT - ICON) / 2.0),
-            NSSize::new(ICON, ICON),
-        ),
+        NSRect::new(NSPoint::new(ICON_X, ICON_Y), NSSize::new(ICON, ICON)),
     );
     content.addSubview(&icon);
 
-    let left = 16.0 + ICON + 14.0;
-    let title = NSTextField::labelWithString(ns_string!("Gapirʼni roʻyxatga sudrang"), mtm);
-    title.setFont(Some(&NSFont::boldSystemFontOfSize(13.0)));
+    let left = ICON_X + ICON + 16.0;
+    let title =
+        NSTextField::labelWithString(ns_string!("Gapirʼni yuqoridagi roʻyxatga sudrang"), mtm);
+    title.setFont(Some(&NSFont::boldSystemFontOfSize(15.0)));
     title.setFrame(NSRect::new(
-        NSPoint::new(left, 46.0),
-        NSSize::new(WIDTH - left - 12.0, 18.0),
+        NSPoint::new(left, 52.0),
+        NSSize::new(WIDTH - left - 12.0, 22.0),
     ));
     content.addSubview(&title);
 
     let hint = NSTextField::wrappingLabelWithString(
-        ns_string!("Belgini ushlab, yuqoridagi roʻyxatga tashlang. Ruxsat oʻzi yoqiladi."),
+        ns_string!("Belgini ushlab, roʻyxatga tashlang. Ruxsat oʻzi yoqiladi."),
         mtm,
     );
-    hint.setFont(Some(&NSFont::systemFontOfSize(11.0)));
+    hint.setFont(Some(&NSFont::systemFontOfSize(12.0)));
     hint.setTextColor(Some(&NSColor::secondaryLabelColor()));
     hint.setFrame(NSRect::new(
-        NSPoint::new(left, 12.0),
-        NSSize::new(WIDTH - left - 12.0, 32.0),
+        NSPoint::new(left, 16.0),
+        NSSize::new(WIDTH - left - 12.0, 34.0),
     ));
     content.addSubview(&hint);
-    panel
+    Helper {
+        panel,
+        icon,
+        title,
+        hint,
+        origin: None,
+        bob_up: false,
+    }
 }
