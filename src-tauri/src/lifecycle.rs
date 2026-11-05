@@ -220,6 +220,9 @@ pub fn on_run_event(app: &AppHandle, event: RunEvent) {
             api, code: None, ..
         } => api.prevent_exit(),
         RunEvent::Reopen { .. } => show_main(app),
+        // ggml's static destructors abort if a model is still loaded, and a transcription may
+        // still be running. Nothing here needs cleanup: settings are saved as they change.
+        RunEvent::Exit => unsafe { libc::_exit(0) },
         _ => {}
     }
 }
