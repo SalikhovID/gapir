@@ -16,6 +16,8 @@ pub trait Output {
     fn backspace(&mut self, count: usize);
     /// The user pressed a key or the mouse after `since`, so the cursor may have moved.
     fn user_interacted_since(&self, since: Instant) -> bool;
+    /// Sends the delivered text with Return, in apps where the user allowed it.
+    fn submit(&mut self);
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,6 +151,7 @@ mod tests {
         fn user_interacted_since(&self, _since: Instant) -> bool {
             self.interacted
         }
+        fn submit(&mut self) {}
     }
 
     fn setup() -> (Delivery, Fake, Instant) {

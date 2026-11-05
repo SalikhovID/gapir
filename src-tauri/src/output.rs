@@ -2,7 +2,7 @@
 //! which matters here: text arrives piece by piece and the user may copy something meanwhile.
 
 use crate::hotkeys::Keys;
-use objc2_app_kit::NSWorkspace;
+use objc2_app_kit::{NSRunningApplication, NSWorkspace};
 use objc2_application_services::{AXError, AXUIElement};
 use objc2_core_foundation::{CFEqual, CFRetained, CFString, CFType};
 use objc2_core_graphics::{
@@ -15,6 +15,20 @@ use std::time::{Duration, Instant};
 /// `CGEventKeyboardSetUnicodeString` handles at most this many UTF-16 units per event.
 const MAX_UNITS: usize = 20;
 const BACKSPACE_KEYCODE: u16 = 51;
+const RETURN_KEYCODE: u16 = 36;
+/// Apps where Return sends a prompt: terminals that run coding agents, and Claude.
+// shortcut: fixed list, make it a setting if users ask for other apps.
+const SEND_APPS: &[&str] = &[
+    "com.apple.Terminal",
+    "com.googlecode.iterm2",
+    "com.mitchellh.ghostty",
+    "dev.warp.Warp-Stable",
+    "com.github.wez.wezterm",
+    "net.kovidgoyal.kitty",
+    "org.alacritty",
+    "so.stencil.tern",
+    "com.anthropic.claudefordesktop",
+];
 
 #[link(name = "Carbon", kind = "framework")]
 extern "C" {
@@ -35,6 +49,12 @@ fn frontmost_pid() -> Option<i32> {
     NSWorkspace::sharedWorkspace()
         .frontmostApplication()
         .map(|app| app.processIdentifier())
+}
+
+fn bundle_id(pid: i32) -> Option<String> {
+    NSRunningApplication::runningApplicationWithProcessIdentifier(pid)?
+        .bundleIdentifier()
+        .map(|id| id.to_string())
 }
 
 fn focused_window(pid: i32) -> Option<CFRetained<CFType>> {
@@ -144,6 +164,25 @@ impl MacOutput {
                 }
             }
             std::thread::sleep(Duration::from_millis(2));
+        }
+    }
+
+    /// Presses Return if the target is one of [`SEND_APPS`] and still has focus.
+    pub fn submit(&mut self) {
+        let Some(target) = &self.target else {
+            return;
+        };
+        let allowed = bundle_id(target.pid).is_some_and(|id| SEND_APPS.contains(&id.as_str()));
+        if !allowed || !self.is_target_focused() || self.secure_input() {
+            return;
+        }
+        // A pause after the typed text, so terminal apps do not read Return as part of a paste.
+        std::thread::sleep(Duration::from_millis(150));
+        let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState);
+        for down in [true, false] {
+            if let Some(event) = key_event(source.as_deref(), RETURN_KEYCODE, down) {
+                post(&event);
+            }
         }
     }
 

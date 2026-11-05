@@ -227,7 +227,9 @@ impl<P: Platform, V: Vad> Engine<P, V> {
         }
         if finished.undelivered {
             self.platform.notify(Notice::TextInMenu);
-        } else if finished.text.is_empty() && !self.announced {
+        } else if !finished.text.is_empty() {
+            self.platform.submit();
+        } else if !self.announced {
             self.platform.notify(Notice::NoSpeech);
         }
         self.end_session();
@@ -349,6 +351,7 @@ mod tests {
         esc: bool,
         cues: Vec<Cue>,
         setups: usize,
+        submits: usize,
     }
 
     impl Output for World {
@@ -369,6 +372,9 @@ mod tests {
         }
         fn user_interacted_since(&self, _since: Instant) -> bool {
             self.interacted
+        }
+        fn submit(&mut self) {
+            self.submits += 1;
         }
     }
 
@@ -857,6 +863,38 @@ mod tests {
         assert_eq!(w.typed, "");
         assert_eq!(w.last_text.as_deref(), Some("Salom"));
         assert_eq!(w.notices, vec![Notice::TextInMenu]);
+    }
+
+    #[test]
+    fn only_a_fully_delivered_session_is_submitted() {
+        let mut r = Rig::new();
+        r.start_hold();
+        r.speech(1_000);
+        r.send(Key(Event::FnUp));
+        r.send(Transcribed {
+            session: 1,
+            text: "salom".into(),
+        });
+        assert_eq!(r.world().submits, 1);
+
+        r.start_toggle();
+        r.spoken_chunk();
+        r.send(Key(Event::Esc));
+        assert_eq!(r.world().submits, 1, "cancelled");
+
+        r.start_toggle();
+        r.spoken_chunk();
+        r.engine.platform_mut().away = true;
+        r.send(Key(Event::ToggleHotkey));
+        r.send(Transcribed {
+            session: 3,
+            text: "salom".into(),
+        });
+        assert_eq!(r.world().submits, 1, "undelivered");
+
+        r.start_toggle();
+        r.send(Key(Event::ToggleHotkey));
+        assert_eq!(r.world().submits, 1, "no speech");
     }
 
     #[test]
