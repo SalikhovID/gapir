@@ -5,3 +5,5 @@ target/
 .DS_Store
 node_modules/
 src-tauri/gen/
+Gapir-macos-arm64.zip
+Gapir-macos-arm64.zip.sha256
