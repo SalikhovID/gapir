@@ -65,7 +65,7 @@ npx @tauri-apps/cli@2 build --bundles app
 
 Build uchun Rust, CMake, Node va Command Line Tools kerak. Linux va Windows hali yoʻq.
 
-Release qoʻlda ham yigʻiladi: [`scripts/package.sh`](scripts/package.sh) ilovani quradi, imzolaydi va zip qiladi. Model [`convert-model`](.github/workflows/convert-model.yml) workflow'ida asl fayldan qayta yigʻiladi.
+Release qoʻlda yigʻiladi: [`scripts/package.sh`](scripts/package.sh) ilovani quradi, imzolaydi va zip qiladi, keyin `gh release create` bilan yuklanadi. Model [`scripts/convert-model.py`](scripts/convert-model.py) bilan asl fayldan olinadi, aniq versiyalari [model release](https://github.com/SalikhovID/gapir/releases/tag/model-rubaistt-v2-q5km) izohida yozilgan.
 
 ## Litsenziya
 

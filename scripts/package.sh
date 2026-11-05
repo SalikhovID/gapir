@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Builds, signs and zips Gapir into Gapir-macos-arm64.zip in the repository root.
-# Used by the release workflow and for releases made by hand.
 #
 # MACOS_CERT_P12       base64 of the signing certificate
 # MACOS_CERT_PASSWORD  its password
