@@ -53,6 +53,11 @@ impl Output for Desktop {
     fn user_interacted_since(&self, since: Instant) -> bool {
         self.output.user_interacted_since(since)
     }
+    fn submit(&mut self) {
+        if self.shared.settings().auto_send {
+            self.output.submit();
+        }
+    }
 }
 
 impl Platform for Desktop {

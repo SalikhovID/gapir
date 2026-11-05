@@ -14,6 +14,8 @@ pub struct Settings {
     pub autostart: bool,
     pub sounds: bool,
     pub update_check: bool,
+    /// Press Return after dictation in terminals and Claude, so the prompt is sent.
+    pub auto_send: bool,
 }
 
 impl Default for Settings {
@@ -25,6 +27,7 @@ impl Default for Settings {
             autostart: true,
             sounds: false,
             update_check: true,
+            auto_send: false,
         }
     }
 }

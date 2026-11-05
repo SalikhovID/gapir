@@ -59,6 +59,7 @@ function renderSettings() {
   $("autostart").checked = settings.autostart;
   $("sounds").checked = settings.sounds;
   $("update-check").checked = settings.update_check;
+  $("auto-send").checked = settings.auto_send;
   $("mic").value = settings.mic_device ?? "";
   $("version").textContent = `Gapir ${status.version}`;
 }
@@ -166,6 +167,7 @@ $("fn-enabled").addEventListener("change", (event) => save({ fn_enabled: event.t
 $("autostart").addEventListener("change", (event) => save({ autostart: event.target.checked }));
 $("sounds").addEventListener("change", (event) => save({ sounds: event.target.checked }));
 $("update-check").addEventListener("change", (event) => save({ update_check: event.target.checked }));
+$("auto-send").addEventListener("change", (event) => save({ auto_send: event.target.checked }));
 
 listen("model-progress", ({ payload }) => {
   const percent = (payload.done / payload.total) * 100;
