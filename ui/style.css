@@ -264,19 +264,6 @@ textarea::placeholder {
   opacity: 0.75;
 }
 
-.tip {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  margin-top: 16px;
-  color: var(--zargaldoq);
-}
-
-.tip p {
-  margin: 0;
-}
-
 .row {
   display: flex;
   align-items: center;

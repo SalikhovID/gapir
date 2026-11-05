@@ -2,16 +2,19 @@
 
 use std::time::{Duration, Instant};
 
-/// A shorter `fn` press is treated as an accidental tap, not as dictation.
-pub const MIN_HOLD: Duration = Duration::from_millis(200);
+/// `fn` must stay down this long before anything happens. A short press belongs to macOS, which
+/// uses it to switch the keyboard layout, so until then the app stays completely out of the way.
+pub const FN_HOLD_DELAY: Duration = Duration::from_secs(2);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum State {
     Idle,
-    /// Recording while `fn` is held down.
-    RecHold {
+    /// `fn` is down but the delay is still running. Nothing is active yet.
+    Armed {
         since: Instant,
     },
+    /// Recording while `fn` is held down.
+    RecHold,
     /// Recording until the toggle hotkey is pressed again.
     RecToggle,
     /// Microphone closed; the queued audio is still being transcribed.
@@ -22,6 +25,8 @@ pub enum State {
 pub enum Event {
     FnDown,
     FnUp,
+    /// `fn` stayed down for the whole delay.
+    HoldElapsed,
     /// `fn` was used as a modifier for another key, so this is not dictation.
     FnChord,
     ToggleHotkey,
@@ -61,23 +66,23 @@ pub fn step(state: State, event: Event, now: Instant) -> (State, Vec<Action>) {
     use State::*;
 
     match (state, event) {
-        (Idle, FnDown) => (RecHold { since: now }, vec![StartRec]),
-        (Idle, ToggleHotkey) => (RecToggle, vec![StartRec]),
+        (Idle, FnDown) => (Armed { since: now }, vec![]),
+        (Idle | Armed { .. }, ToggleHotkey) => (RecToggle, vec![StartRec]),
 
-        (RecHold { since }, FnUp) if now.duration_since(since) < MIN_HOLD => (Idle, vec![Discard]),
-        (RecHold { .. }, FnUp) => (Draining, vec![StopRec]),
-        (RecHold { .. }, FnChord) => (Idle, vec![Discard]),
+        (Armed { .. }, HoldElapsed) => (RecHold, vec![StartRec]),
+        (Armed { .. }, FnUp | FnChord | Esc) => (Idle, vec![]),
+
+        (RecHold, FnUp) => (Draining, vec![StopRec]),
+        (RecHold, FnChord) => (Idle, vec![Discard]),
 
         (RecToggle, ToggleHotkey) => (Draining, vec![StopRec]),
         (RecToggle, SilenceTimeout) => (Draining, vec![StopRec, Show(Message::SilenceStopped)]),
 
-        (RecHold { .. } | RecToggle, Esc) | (Draining, Esc) => (Idle, vec![Cancel]),
-        (RecHold { .. } | RecToggle, MaxDuration) => {
+        (RecHold | RecToggle | Draining, Esc) => (Idle, vec![Cancel]),
+        (RecHold | RecToggle, MaxDuration) => {
             (Draining, vec![StopRec, Show(Message::LimitReached)])
         }
-        (RecHold { .. } | RecToggle, DeviceLost) => {
-            (Draining, vec![StopRec, Show(Message::MicLost)])
-        }
+        (RecHold | RecToggle, DeviceLost) => (Draining, vec![StopRec, Show(Message::MicLost)]),
 
         (Draining, DrainDone) => (Idle, vec![Finish]),
         (Draining, FnDown | ToggleHotkey) => (Draining, vec![Show(Message::StillTranscribing)]),
@@ -99,12 +104,9 @@ mod tests {
     }
 
     #[test]
-    fn idle_fn_down_starts_hold_recording() {
+    fn idle_fn_down_only_arms_the_delay() {
         let (now, _) = at(0);
-        assert_eq!(
-            step(Idle, FnDown, now),
-            (RecHold { since: now }, vec![StartRec])
-        );
+        assert_eq!(step(Idle, FnDown, now), (Armed { since: now }, vec![]));
     }
 
     #[test]
@@ -135,53 +137,73 @@ mod tests {
     }
 
     #[test]
-    fn quick_fn_tap_discards() {
-        let (start, later) = at(199);
+    fn a_short_fn_press_does_nothing() {
+        let (start, later) = at(1_999);
+        assert_eq!(step(Armed { since: start }, FnUp, later), (Idle, vec![]));
+    }
+
+    #[test]
+    fn the_end_of_the_delay_starts_hold_recording() {
+        let (start, later) = at(2_000);
         assert_eq!(
-            step(RecHold { since: start }, FnUp, later),
-            (Idle, vec![Discard])
+            step(Armed { since: start }, HoldElapsed, later),
+            (RecHold, vec![StartRec])
         );
     }
 
     #[test]
-    fn fn_release_after_threshold_stops_and_drains() {
-        let (start, later) = at(200);
+    fn using_fn_as_a_modifier_cancels_the_delay() {
+        let (start, later) = at(500);
+        assert_eq!(step(Armed { since: start }, FnChord, later), (Idle, vec![]));
+        assert_eq!(step(Armed { since: start }, Esc, later), (Idle, vec![]));
+    }
+
+    #[test]
+    fn toggle_during_the_delay_starts_toggle_recording() {
+        let (start, later) = at(500);
         assert_eq!(
-            step(RecHold { since: start }, FnUp, later),
-            (Draining, vec![StopRec])
+            step(Armed { since: start }, ToggleHotkey, later),
+            (RecToggle, vec![StartRec])
         );
+    }
+
+    #[test]
+    fn the_delay_ignores_recording_events() {
+        let (start, later) = at(500);
+        let state = Armed { since: start };
+        for e in [FnDown, SilenceTimeout, MaxDuration, DeviceLost, DrainDone] {
+            assert_eq!(step(state, e, later), (state, vec![]), "{e:?}");
+        }
+    }
+
+    #[test]
+    fn fn_release_stops_and_drains() {
+        let (now, _) = at(0);
+        assert_eq!(step(RecHold, FnUp, now), (Draining, vec![StopRec]));
     }
 
     #[test]
     fn fn_chord_discards() {
-        let (start, later) = at(800);
-        assert_eq!(
-            step(RecHold { since: start }, FnChord, later),
-            (Idle, vec![Discard])
-        );
+        let (now, _) = at(0);
+        assert_eq!(step(RecHold, FnChord, now), (Idle, vec![Discard]));
     }
 
     #[test]
     fn esc_during_hold_cancels() {
-        let (start, later) = at(800);
-        assert_eq!(
-            step(RecHold { since: start }, Esc, later),
-            (Idle, vec![Cancel])
-        );
+        let (now, _) = at(0);
+        assert_eq!(step(RecHold, Esc, now), (Idle, vec![Cancel]));
     }
 
     #[test]
     fn toggle_during_hold_is_ignored() {
-        let (start, later) = at(800);
-        let state = RecHold { since: start };
-        assert_eq!(step(state, ToggleHotkey, later), (state, vec![]));
+        let (now, _) = at(0);
+        assert_eq!(step(RecHold, ToggleHotkey, now), (RecHold, vec![]));
     }
 
     #[test]
     fn hold_ignores_silence_timeout() {
-        let (start, later) = at(31_000);
-        let state = RecHold { since: start };
-        assert_eq!(step(state, SilenceTimeout, later), (state, vec![]));
+        let (now, _) = at(0);
+        assert_eq!(step(RecHold, SilenceTimeout, now), (RecHold, vec![]));
     }
 
     #[test]
@@ -218,14 +240,14 @@ mod tests {
 
     #[test]
     fn limit_and_device_loss_stop_both_recording_modes() {
-        let (start, later) = at(5_000);
-        for state in [RecHold { since: start }, RecToggle] {
+        let (now, _) = at(0);
+        for state in [RecHold, RecToggle] {
             assert_eq!(
-                step(state, MaxDuration, later),
+                step(state, MaxDuration, now),
                 (Draining, vec![StopRec, Show(Message::LimitReached)])
             );
             assert_eq!(
-                step(state, DeviceLost, later),
+                step(state, DeviceLost, now),
                 (Draining, vec![StopRec, Show(Message::MicLost)])
             );
         }

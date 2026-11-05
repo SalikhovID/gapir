@@ -142,7 +142,6 @@ pub fn run() {
             commands::get_status,
             commands::list_mics,
             commands::request_permission,
-            commands::open_keyboard_settings,
             commands::pause_hotkeys,
             commands::save_settings,
             commands::download_model,

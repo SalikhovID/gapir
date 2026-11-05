@@ -22,7 +22,6 @@ pub struct MicInfo {
 pub struct Status {
     mic: &'static str,
     accessibility: bool,
-    fn_usage: Option<i64>,
     model_present: bool,
     model_size: u64,
     downloading: bool,
@@ -35,7 +34,6 @@ pub fn get_status(shared: State<'_, Arc<Shared>>) -> Status {
     Status {
         mic: permissions::mic_status(),
         accessibility: permissions::accessibility(),
-        fn_usage: permissions::fn_usage(),
         model_present: model_store::is_present(&shared.models_dir, &MODEL),
         model_size: MODEL.size,
         downloading: shared.downloading.load(Ordering::SeqCst),
@@ -67,11 +65,6 @@ pub fn request_permission(kind: String) {
         }
         _ => {}
     }
-}
-
-#[tauri::command]
-pub fn open_keyboard_settings() {
-    permissions::open_pane("keyboard");
 }
 
 #[tauri::command]

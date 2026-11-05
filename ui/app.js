@@ -60,7 +60,6 @@ function renderSettings() {
   $("sounds").checked = settings.sounds;
   $("update-check").checked = settings.update_check;
   $("mic").value = settings.mic_device ?? "";
-  $("fn-tip").hidden = !settings.fn_enabled || status.fn_usage === 0;
   $("version").textContent = `Gapir ${status.version}`;
 }
 
@@ -152,7 +151,6 @@ async function startCapture() {
 
 $("mic-action").addEventListener("click", () => invoke("request_permission", { kind: "mic" }));
 $("access-action").addEventListener("click", () => invoke("request_permission", { kind: "accessibility" }));
-$("fn-tip-action").addEventListener("click", () => invoke("open_keyboard_settings"));
 $("change-hotkey").addEventListener("click", startCapture);
 
 $("model-action").addEventListener("click", async () => {

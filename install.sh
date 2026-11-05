@@ -107,7 +107,7 @@ main() {
 Gapir oʻrnatildi: $APP_PATH
 
 Ochilgan oynada mikrofon va Accessibility ruxsatini bering.
-Keyin istalgan matn maydonida fn tugmasini bosib turing va gapiring.
+Keyin istalgan matn maydonida fn tugmasini 2 soniya bosib turing va gapiring.
 Oʻchirish uchun: curl -fsSL https://raw.githubusercontent.com/$REPO/main/uninstall.sh | bash
 MESSAGE
 }

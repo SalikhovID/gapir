@@ -3,7 +3,7 @@
 
 use crate::chunker::{Chunker, Config, Vad};
 use crate::delivery::{CancelOutcome, Delivery, Output};
-use crate::machine::{self, Action, Event, Message, State};
+use crate::machine::{self, Action, Event, Message, State, FN_HOLD_DELAY};
 use std::time::{Duration, Instant};
 
 /// Toggle recording stops itself after this much silence.
@@ -145,7 +145,7 @@ impl<P: Platform, V: Vad> Engine<P, V> {
     }
 
     fn is_recording(&self) -> bool {
-        matches!(self.state, State::RecHold { .. } | State::RecToggle)
+        matches!(self.state, State::RecHold | State::RecToggle)
     }
 
     fn apply(&mut self, event: Event, now: Instant) {
@@ -277,6 +277,12 @@ impl<P: Platform, V: Vad> Engine<P, V> {
     }
 
     fn on_tick(&mut self, now: Instant) {
+        if let State::Armed { since } = self.state {
+            if now.duration_since(since) >= FN_HOLD_DELAY {
+                self.apply(Event::HoldElapsed, now);
+            }
+            return;
+        }
         self.delivery.poll(&mut self.platform, now);
         let silence_ms = self.chunker.as_ref().map_or(0, Chunker::silence_ms);
         if self.state == State::RecToggle && silence_ms >= SILENCE_LIMIT_MS {
@@ -293,9 +299,9 @@ impl<P: Platform, V: Vad> Engine<P, V> {
     fn refresh_view(&mut self, now: Instant) {
         let waiting = self.delivery.has_pending();
         let view = match self.state {
-            State::Idle => View::Hidden,
-            State::RecHold { .. } | State::RecToggle if !self.mic_ready => View::Starting,
-            State::RecHold { .. } | State::RecToggle => View::Recording {
+            State::Idle | State::Armed { .. } => View::Hidden,
+            State::RecHold | State::RecToggle if !self.mic_ready => View::Starting,
+            State::RecHold | State::RecToggle => View::Recording {
                 elapsed_s: self
                     .started_at
                     .map_or(0, |start| now.duration_since(start).as_secs()),
@@ -446,8 +452,15 @@ mod tests {
             *self.world().views.last().expect("no view shown")
         }
 
-        fn start_hold(&mut self) {
+        /// Presses `fn` and keeps it down until the delay ends.
+        fn hold_fn(&mut self) {
             self.send(Key(Event::FnDown));
+            self.wait(FN_HOLD_DELAY.as_millis() as u64);
+            self.send(Tick);
+        }
+
+        fn start_hold(&mut self) {
+            self.hold_fn();
             self.send(MicReady);
         }
 
@@ -464,9 +477,9 @@ mod tests {
     }
 
     #[test]
-    fn pressing_fn_starts_a_session() {
+    fn holding_fn_past_the_delay_starts_a_session() {
         let mut r = Rig::new();
-        r.send(Key(Event::FnDown));
+        r.hold_fn();
         let w = r.world();
         assert!(w.mic_on);
         assert_eq!(w.targets, 1);
@@ -476,12 +489,62 @@ mod tests {
     }
 
     #[test]
+    fn nothing_happens_during_the_delay() {
+        let mut r = Rig::new();
+        r.send(Key(Event::FnDown));
+        r.wait(1_900);
+        r.send(Tick);
+        let w = r.world();
+        assert!(!w.mic_on);
+        assert_eq!(w.targets, 0);
+        assert_eq!(w.prepared, 0);
+        assert!(!w.esc);
+        assert!(w.views.is_empty());
+    }
+
+    #[test]
+    fn a_short_fn_press_leaves_no_trace() {
+        let mut r = Rig::new();
+        r.send(Key(Event::FnDown));
+        r.wait(300);
+        r.send(Tick);
+        r.send(Key(Event::FnUp));
+        r.wait(3_000);
+        r.send(Tick);
+        let w = r.world();
+        assert_eq!(w.mic_starts, 0);
+        assert_eq!(w.prepared, 0);
+        assert!(w.views.is_empty());
+        assert!(w.notices.is_empty());
+    }
+
+    #[test]
+    fn a_fn_chord_cancels_the_delay() {
+        let mut r = Rig::new();
+        r.send(Key(Event::FnDown));
+        r.send(Key(Event::FnChord));
+        r.wait(3_000);
+        r.send(Tick);
+        assert_eq!(r.world().mic_starts, 0);
+    }
+
+    #[test]
+    fn releasing_fn_without_speaking_says_so() {
+        let mut r = Rig::new();
+        r.start_hold();
+        r.silence(500);
+        r.send(Key(Event::FnUp));
+        assert_eq!(r.world().notices, vec![Notice::NoSpeech]);
+        assert_eq!(r.view(), View::Hidden);
+    }
+
+    #[test]
     fn missing_model_opens_setup_instead_of_recording() {
         let mut r = Rig::with(World {
             model_missing: true,
             ..World::default()
         });
-        r.send(Key(Event::FnDown));
+        r.hold_fn();
         assert!(!r.world().mic_on);
         assert!(!r.world().esc);
         assert_eq!(r.world().setups, 1);
@@ -580,20 +643,6 @@ mod tests {
         r.send(Key(Event::ToggleHotkey));
         assert_eq!(r.world().notices, vec![Notice::NoSpeech]);
         assert_eq!(r.world().queued.len(), 0);
-        assert_eq!(r.view(), View::Hidden);
-    }
-
-    #[test]
-    fn a_quick_tap_leaves_no_trace() {
-        let mut r = Rig::new();
-        r.start_hold();
-        r.wait(100);
-        r.send(Key(Event::FnUp));
-        let w = r.world();
-        assert!(!w.mic_on);
-        assert!(!w.esc);
-        assert!(w.notices.is_empty());
-        assert_eq!(w.typed, "");
         assert_eq!(r.view(), View::Hidden);
     }
 

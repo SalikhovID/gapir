@@ -1,6 +1,6 @@
 # Gapir
 
-Mac uchun oʻzbekcha ovozli yozuv. Istalgan matn maydonida `fn` tugmasini bosib turib gapiring, aytganingiz kursor turgan joyga yoziladi. Ovoz shu kompyuterda matnga oʻgiriladi va hech qayerga yuborilmaydi.
+Mac uchun oʻzbekcha ovozli yozuv. Istalgan matn maydonida `fn` tugmasini 2 soniya bosib turing va gapiring, aytganingiz kursor turgan joyga yoziladi. Ovoz shu kompyuterda matnga oʻgiriladi va hech qayerga yuborilmaydi.
 
 ## Oʻrnatish
 
@@ -23,7 +23,7 @@ Apple Silicon (M1 va undan yangi) va macOS 13 yoki undan yangisi kerak.
 
 | Tugma | Amal |
 |---|---|
-| `fn` bosib turish | Gapirasiz, qoʻyib yuborsangiz yozuv tugaydi |
+| `fn` 2 soniya bosib turish | Ekran pastida belgi chiqqach gapirasiz, qoʻyib yuborsangiz yozuv tugaydi |
 | `⌘⇧G` | Bir bosish yozishni boshlaydi, yana bosish toʻxtatadi |
 | `Esc` | Yozish paytida bosilsa, yozuv bekor boʻladi va yozilgan matn oʻchadi |
 
@@ -36,7 +36,7 @@ Gapir fonda ishlaydi va menu bar'da turadi. `⌘Q` faqat oynani yopadi. Butunlay
 ## Bilib qoʻyish kerak
 
 - `fn` faqat Apple klaviaturalarida ishlaydi. Boshqa klaviaturada `⌘⇧G` ishlating.
-- `fn` bosilganda layout almashsa yoki emoji oynasi ochilsa: System Settings → Keyboard → "Press 🌐 key to" → **Do Nothing**.
+- `fn`ni qisqa bossangiz, Gapir ishlamaydi va mikrofon ochilmaydi. Qisqa bosish macOS'da qoladi, masalan layout almashtirish uchun.
 - `⌘⇧G` Gapir ishlab turganda boshqa ilovalarga bormaydi, masalan Finder'dagi "Go to Folder". Kerak boʻlsa sozlamada boshqa birikma tanlang.
 - Matn asosan kichik harfda keladi, Gapir faqat gap boshini katta qiladi. Raqamlar soʻz bilan yoziladi.
 - Model oʻzbek tili uchun oʻqitilgan. Ruscha gap lotin harflarida chiqadi.
