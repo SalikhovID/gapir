@@ -75,10 +75,6 @@ impl Classifier {
     }
 }
 
-fn fn_hotkey() -> Hotkey {
-    Hotkey::new(Modifiers::FN, None::<Key>).expect("fn alone is a valid hotkey")
-}
-
 fn esc_hotkey() -> Hotkey {
     Hotkey::new(Modifiers::empty(), Key::Escape).expect("Esc alone is a valid hotkey")
 }
@@ -126,10 +122,9 @@ impl Keys {
         if self.paused.load(Ordering::SeqCst) {
             return;
         }
+        // `fn` is only observed. Swallowing it hides the press from macOS, and the layout
+        // switcher then reopens on every press instead of animating between layouts.
         set.insert(config.toggle);
-        if config.fn_enabled {
-            set.insert(fn_hotkey());
-        }
         if self.capture_esc.load(Ordering::SeqCst) {
             set.insert(esc_hotkey());
         }
@@ -369,6 +364,30 @@ mod tests {
         assert!(c
             .classify(&key(Modifiers::empty(), Key::A, false), &config())
             .is_empty());
+    }
+
+    fn blocked(keys: &Keys) -> HashSet<Hotkey> {
+        keys.blocking.lock().unwrap().clone()
+    }
+
+    #[test]
+    fn fn_always_reaches_macos_so_its_layout_switcher_keeps_working() {
+        let keys = Keys::new(&Settings::default());
+        keys.capture_esc(true);
+        assert!(blocked(&keys)
+            .iter()
+            .all(|hotkey| !hotkey.modifiers.contains(Modifiers::FN)));
+    }
+
+    #[test]
+    fn toggle_is_always_blocked_and_esc_only_during_a_session() {
+        let keys = Keys::new(&Settings::default());
+        let toggle: Hotkey = "Cmd+Shift+G".parse().unwrap();
+        assert_eq!(blocked(&keys), HashSet::from([toggle]));
+        keys.capture_esc(true);
+        assert_eq!(blocked(&keys), HashSet::from([toggle, esc_hotkey()]));
+        keys.capture_esc(false);
+        assert_eq!(blocked(&keys), HashSet::from([toggle]));
     }
 
     #[test]
