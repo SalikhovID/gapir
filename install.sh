@@ -15,6 +15,15 @@ MODEL_SIZE=582746144
 MODEL_SHA256="2ed32a824e45feb8ee84c57576068e0b90dbf92f5781271b17bb8dc5ac9d77b9"
 MODEL_DIR="$HOME/Library/Application Support/$BUNDLE_ID/models"
 
+WORK_DIR=""
+
+cleanup() {
+    if [ -n "$WORK_DIR" ]; then
+        rm -rf "$WORK_DIR"
+    fi
+}
+trap cleanup EXIT
+
 fail() {
     printf '\nXato: %s\n' "$1" >&2
     exit 1
@@ -33,18 +42,17 @@ check_system() {
 }
 
 install_app() {
-    local work target
-    work="$(mktemp -d)"
-    trap 'rm -rf "$work"' RETURN
+    local target
+    WORK_DIR="$(mktemp -d)"
 
     echo "Ilova yuklanmoqda..."
     (
-        cd "$work"
+        cd "$WORK_DIR"
         curl -fL --retry 3 --progress-bar -o "$ARCHIVE" "$RELEASE_URL/$ARCHIVE"
         curl -fsSL --retry 3 -o "$ARCHIVE.sha256" "$RELEASE_URL/$ARCHIVE.sha256"
         shasum -a 256 -c "$ARCHIVE.sha256" >/dev/null
     ) || fail "Ilovani yuklab boʻlmadi. Internetni tekshirib, commandni qayta ishga tushiring."
-    ditto -x -k "$work/$ARCHIVE" "$work/unpacked"
+    ditto -x -k "$WORK_DIR/$ARCHIVE" "$WORK_DIR/unpacked"
 
     target="/Applications"
     if [ ! -w "$target" ]; then
@@ -59,7 +67,7 @@ install_app() {
     done
 
     rm -rf "${target:?}/$APP"
-    mv "$work/unpacked/$APP" "$target/$APP"
+    mv "$WORK_DIR/unpacked/$APP" "$target/$APP"
     xattr -dr com.apple.quarantine "$target/$APP" 2>/dev/null || true
     APP_PATH="$target/$APP"
 }
