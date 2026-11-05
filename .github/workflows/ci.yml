@@ -1,0 +1,104 @@
+name: CI
+
+# Pull requests are checked. Every push to main, which includes a merged pull request, is
+# checked and then released: the patch version goes up, a "chore: release" commit and the
+# vX.Y.Z tag are added, and the signed app is published as a GitHub release.
+# Put [skip ci] in a commit message to push to main without a release.
+# A minor or major bump is made by hand: scripts/set-version.sh 0.2.0, commit, push.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# One release at a time, so two quick merges cannot hand out the same version.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+  release:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the tags decide the next version
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Pick the version
+        id: version
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          version="$(scripts/set-version.sh)"
+          echo "number=$version" >> "$GITHUB_OUTPUT"
+          # Committed here, pushed only after the build worked.
+          if ! git diff --quiet; then
+            git commit --quiet --all --message "chore: release v$version [skip ci]"
+          fi
+
+      - name: Build, sign and package
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: scripts/package.sh
+
+      - name: Check the build
+        env:
+          VERSION: ${{ steps.version.outputs.number }}
+        run: |
+          app=target/aarch64-apple-darwin/release/bundle/macos/Gapir.app
+          binary="$app/Contents/MacOS/gapir"
+          [ "$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")" = "$VERSION" ]
+          [ "$(lipo -archs "$binary")" = "arm64" ]
+          # install.sh promises macOS 13, so the build must not ask for more.
+          vtool -show-build "$binary" | grep -q 'minos 13.0'
+          shasum -a 256 -c Gapir-macos-arm64.zip.sha256
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.number }}
+        run: |
+          # If main moved while this built, the run for the newer commit releases it.
+          git fetch --quiet origin main
+          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
+            echo "::notice::main moved on during the build, the newer run releases it"
+            exit 0
+          fi
+
+          notes=(--generate-notes)
+          previous="$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)"
+          if [ -n "$previous" ]; then
+            notes+=(--notes-start-tag "$previous")
+          fi
+
+          git push --quiet origin HEAD:main
+          gh release create "v$VERSION" Gapir-macos-arm64.zip Gapir-macos-arm64.zip.sha256 \
+            --target "$(git rev-parse HEAD)" --title "Gapir v$VERSION" "${notes[@]}"

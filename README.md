@@ -65,7 +65,9 @@ npx @tauri-apps/cli@2 build --bundles app
 
 Build uchun Rust, CMake, Node va Command Line Tools kerak. Linux va Windows hali yoʻq.
 
-Release qoʻlda yigʻiladi: [`scripts/package.sh`](scripts/package.sh) ilovani quradi, imzolaydi va zip qiladi, keyin `gh release create` bilan yuklanadi. Model [`scripts/convert-model.py`](scripts/convert-model.py) bilan asl fayldan olinadi, aniq versiyalari [model release](https://github.com/SalikhovID/gapir/releases/tag/model-rubaistt-v2-q5km) izohida yozilgan.
+Release avtomatik chiqadi. `main`ga har bir push yoki merge [CI](.github/workflows/ci.yml)ni ishga tushiradi: u fmt, clippy va testlarni tekshiradi, patch versiyani bittaga oshiradi (`chore: release` commit va `vX.Y.Z` tegi), ilovani [`scripts/package.sh`](scripts/package.sh) bilan quradi, imzolaydi va GitHub release qilib yuklaydi. Release kerak boʻlmasa, commit xabariga `[skip ci]` yozing. Minor yoki major versiya uchun `scripts/set-version.sh 0.2.0` ni ishga tushirib, oʻzgarishni commit qiling: CI aynan shu versiyani chiqaradi. CI ishlamay qolsa, release qoʻlda ham chiqadi: `scripts/package.sh` zip yasaydi (`MACOS_CERT_P12` va `MACOS_CERT_PASSWORD` kerak), keyin `gh release create` bilan yuklanadi.
+
+Model [`scripts/convert-model.py`](scripts/convert-model.py) bilan asl fayldan olinadi, aniq versiyalari [model release](https://github.com/SalikhovID/gapir/releases/tag/model-rubaistt-v2-q5km) izohida yozilgan.
 
 ## Litsenziya
 
