@@ -60,7 +60,8 @@ jobs:
       - name: Build
         run: |
           version="$(scripts/set-version.sh)"
-          python scripts/third-party-licenses.py > THIRD-PARTY-LICENSES.txt
+          # Without UTF-8 mode Python writes the cp1252 console encoding and fails.
+          PYTHONUTF8=1 python scripts/third-party-licenses.py > THIRD-PARTY-LICENSES.txt
           npx -y @tauri-apps/cli@2.12.4 build --bundles nsis
           cp "target/release/bundle/nsis/Gapir_${version}_x64-setup.exe" Gapir-windows-x64-setup.exe
           sha256sum Gapir-windows-x64-setup.exe > Gapir-windows-x64-setup.exe.sha256
