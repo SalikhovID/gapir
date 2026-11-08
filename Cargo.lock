@@ -1330,7 +1330,7 @@ dependencies = [
 
 [[package]]
 name = "gapir"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "block2",
  "gapir-core",
@@ -1360,7 +1360,7 @@ dependencies = [
 
 [[package]]
 name = "gapir-core"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "earshot",
  "serde",
