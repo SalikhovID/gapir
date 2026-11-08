@@ -2,7 +2,15 @@ const { invoke } = window.__TAURI__.core;
 const { listen } = window.__TAURI__.event;
 
 const $ = (id) => document.getElementById(id);
-const SYMBOLS = { Cmd: "⌘", Shift: "⇧", Alt: "⌥", Ctrl: "⌃" };
+const WINDOWS = navigator.userAgent.includes("Windows");
+const SYMBOLS = WINDOWS ? { Cmd: "Win" } : { Cmd: "⌘", Shift: "⇧", Alt: "⌥", Ctrl: "⌃" };
+
+// Windows has no fn key (right Ctrl stands in) and no Accessibility grant.
+if (WINDOWS) {
+  document.querySelectorAll(".mac-only").forEach((element) => (element.style.display = "none"));
+  $("try").placeholder = "Kursorni shu yerga qoʻying, oʻng Ctrl ni 1 soniya bosib turing va gapiring";
+  document.querySelectorAll(".hold-key").forEach((element) => (element.textContent = "oʻng Ctrl"));
+}
 
 let status = null;
 let capturing = false;
@@ -17,7 +25,7 @@ function renderSteps() {
     ["step-mic", status.mic === "granted"],
     ["step-access", status.accessibility],
     ["step-model", status.model_present],
-  ];
+  ].filter(([id]) => !WINDOWS || id !== "step-access");
   const firstOpen = steps.findIndex(([, done]) => !done);
   steps.forEach(([id, done], index) => {
     $(id).classList.toggle("done", done);

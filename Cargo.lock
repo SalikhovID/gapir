@@ -1355,6 +1355,7 @@ dependencies = [
  "tauri-plugin-single-instance",
  "transcribe-cpp",
  "ureq",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

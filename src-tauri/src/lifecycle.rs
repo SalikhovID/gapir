@@ -4,20 +4,26 @@ use crate::{updater, Shared};
 use gapir_core::engine::View;
 use std::sync::{Arc, Mutex};
 use tauri::image::Image;
-use tauri::menu::{
-    Menu, MenuBuilder, MenuEvent, MenuItem, MenuItemBuilder, PredefinedMenuItem, SubmenuBuilder,
-};
+#[cfg(target_os = "macos")]
+use tauri::menu::{Menu, PredefinedMenuItem, SubmenuBuilder};
+use tauri::menu::{MenuBuilder, MenuEvent, MenuItem, MenuItemBuilder};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
-use tauri::{
-    include_image, ActivationPolicy, AppHandle, Manager, RunEvent, TitleBarStyle, WebviewUrl,
-    WebviewWindowBuilder, Window, WindowEvent,
-};
+use tauri::{include_image, AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
+#[cfg(target_os = "macos")]
+use tauri::{ActivationPolicy, TitleBarStyle, Window, WindowEvent};
 
 const MAIN: &str = "main";
 
+#[cfg(target_os = "macos")]
 const ICON_IDLE: Image<'static> = include_image!("icons/tray-idle.png");
 const ICON_RECORDING: Image<'static> = include_image!("icons/tray-recording.png");
+#[cfg(target_os = "macos")]
 const ICON_BUSY: Image<'static> = include_image!("icons/tray-busy.png");
+// The black template icons vanish on the dark Windows taskbar.
+#[cfg(windows)]
+const ICON_IDLE: Image<'static> = include_image!("icons/32x32.png");
+#[cfg(windows)]
+const ICON_BUSY: Image<'static> = ICON_IDLE;
 
 /// Handles of the tray menu entries that change at runtime.
 pub struct Tray {
@@ -31,6 +37,7 @@ pub struct Tray {
 
 /// Cmd+Q is a custom item, not the predefined Quit: the predefined one calls `terminate:`
 /// directly and would end the process, which is exactly what must not happen.
+#[cfg(target_os = "macos")]
 pub fn app_menu(app: &AppHandle) -> tauri::Result<Menu<tauri::Wry>> {
     let hide = MenuItemBuilder::with_id("hide", "Gapirni yashirish")
         .accelerator("CmdOrCtrl+Q")
@@ -144,21 +151,25 @@ pub fn set_update_available(app: &AppHandle, tag: &str) {
 pub fn show_main(app: &AppHandle) {
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
+        #[cfg(target_os = "macos")]
         let _ = handle.set_activation_policy(ActivationPolicy::Regular);
         if let Some(window) = handle.get_webview_window(MAIN) {
             let _ = window.show();
             let _ = window.set_focus();
             return;
         }
-        let window = WebviewWindowBuilder::new(&handle, MAIN, WebviewUrl::App("index.html".into()))
-            .title("Gapir")
-            .inner_size(480.0, 770.0)
-            .resizable(false)
-            .maximizable(false)
+        let builder =
+            WebviewWindowBuilder::new(&handle, MAIN, WebviewUrl::App("index.html".into()))
+                .title("Gapir")
+                .inner_size(480.0, 770.0)
+                .resizable(false)
+                .maximizable(false)
+                .center();
+        #[cfg(target_os = "macos")]
+        let builder = builder
             .title_bar_style(TitleBarStyle::Overlay)
-            .hidden_title(true)
-            .center()
-            .build();
+            .hidden_title(true);
+        let window = builder.build();
         match window {
             Ok(window) => {
                 let _ = window.set_focus();
@@ -173,6 +184,7 @@ fn close_main(app: &AppHandle) {
     if let Some(window) = app.get_webview_window(MAIN) {
         let _ = window.close();
     }
+    #[cfg(target_os = "macos")]
     let _ = app.set_activation_policy(ActivationPolicy::Accessory);
 }
 
@@ -188,20 +200,12 @@ pub fn on_menu_event(app: &AppHandle, event: MenuEvent) {
 }
 
 fn copy_last_text(app: &AppHandle) {
-    use std::io::Write;
     let shared = app.state::<Arc<Shared>>();
     let text = shared.last_text.lock().expect("last text lock").clone();
-    let child = std::process::Command::new("/usr/bin/pbcopy")
-        .stdin(std::process::Stdio::piped())
-        .spawn();
-    if let Ok(mut child) = child {
-        if let Some(mut stdin) = child.stdin.take() {
-            let _ = stdin.write_all(text.as_bytes());
-        }
-        let _ = child.wait();
-    }
+    crate::output::set_clipboard(&text);
 }
 
+#[cfg(target_os = "macos")]
 pub fn on_window_event(window: &Window, event: &WindowEvent) {
     if window.label() != MAIN {
         return;
@@ -213,12 +217,14 @@ pub fn on_window_event(window: &Window, event: &WindowEvent) {
     }
 }
 
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
 pub fn on_run_event(app: &AppHandle, event: RunEvent) {
     match event {
         // Fires when the last window closes. The hotkeys must outlive every window.
         RunEvent::ExitRequested {
             api, code: None, ..
         } => api.prevent_exit(),
+        #[cfg(target_os = "macos")]
         RunEvent::Reopen { .. } => show_main(app),
         // ggml's static destructors abort if a model is still loaded, and a transcription may
         // still be running. Nothing here needs cleanup: settings are saved as they change.

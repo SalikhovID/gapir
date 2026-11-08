@@ -40,7 +40,7 @@ struct Target {
     window: Option<CFRetained<CFType>>,
 }
 
-pub struct MacOutput {
+pub struct SystemOutput {
     keys: Arc<Keys>,
     target: Option<Target>,
 }
@@ -103,7 +103,7 @@ fn key_event(
     Some(event)
 }
 
-impl MacOutput {
+impl SystemOutput {
     pub fn new(keys: Arc<Keys>) -> Self {
         Self { keys, target: None }
     }
@@ -199,6 +199,19 @@ impl MacOutput {
                     kind,
                 ) < elapsed
             })
+    }
+}
+
+pub fn set_clipboard(text: &str) {
+    use std::io::Write;
+    let child = std::process::Command::new("/usr/bin/pbcopy")
+        .stdin(std::process::Stdio::piped())
+        .spawn();
+    if let Ok(mut child) = child {
+        if let Some(mut stdin) = child.stdin.take() {
+            let _ = stdin.write_all(text.as_bytes());
+        }
+        let _ = child.wait();
     }
 }
 
