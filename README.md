@@ -23,7 +23,7 @@ Apple Silicon (M1 va undan yangi) va macOS 13 yoki undan yangisi kerak.
 
 [Oxirgi release](https://github.com/SalikhovID/gapir/releases/latest)dan `Gapir-windows-x64-setup.exe` ni yuklab, ishga tushiring. Installer imzolanmagan, shuning uchun SmartScreen ogohlantiradi: **More info** → **Run anyway**. Model birinchi ochilishda ilovaning oʻzida yuklanadi.
 
-Windows'da `fn` oʻrniga **oʻng Ctrl** ishlaydi, `⌘⇧G` oʻrniga `Ctrl+Shift+G`. Windows 10 yoki 11 (x64) kerak. Nutq hozircha faqat CPU'da matnga oʻgiriladi, Mac'dan sekinroq.
+Windows'da `fn` oʻrniga **oʻng Ctrl** ishlaydi, `⌘⇧G` oʻrniga `Ctrl+Shift+G`. Windows 10 yoki 11 (x64) kerak. Nutq Vulkan orqali videokartada matnga oʻgiriladi (NVIDIA, AMD, Intel). Vulkan boʻlmasa, Gapir CPU'da ishlaydi, lekin sekinroq.
 
 ## Ishlatish
 
@@ -69,7 +69,7 @@ cargo test --workspace
 npx @tauri-apps/cli@2 build --bundles app
 ```
 
-Build uchun Rust, CMake, Node va Command Line Tools kerak, Windows'da Visual Studio Build Tools. Windows installer: `npx @tauri-apps/cli@2 build --bundles nsis`. Linux hali yoʻq.
+Build uchun Rust, CMake, Node va Command Line Tools kerak, Windows'da Visual Studio Build Tools va [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows). Windows installer: `npx @tauri-apps/cli@2 build --bundles nsis`. Linux hali yoʻq.
 
 Release avtomatik chiqadi. `main`ga har bir push yoki merge [CI](.github/workflows/ci.yml)ni ishga tushiradi: u fmt, clippy va testlarni macOS va Windows'da tekshiradi, patch versiyani bittaga oshiradi (`chore: release` commit va `vX.Y.Z` tegi), ilovani [`scripts/package.sh`](scripts/package.sh) bilan quradi, imzolaydi, Windows installer'ni ham quradi va ikkalasini bitta GitHub release qilib yuklaydi. Release kerak boʻlmasa, commit xabariga `[skip ci]` yozing. Minor yoki major versiya uchun `scripts/set-version.sh 0.2.0` ni ishga tushirib, oʻzgarishni commit qiling: CI aynan shu versiyani chiqaradi. CI ishlamay qolsa, release qoʻlda ham chiqadi: `scripts/package.sh` zip yasaydi (`MACOS_CERT_P12` va `MACOS_CERT_PASSWORD` kerak), keyin `gh release create` bilan yuklanadi.
 

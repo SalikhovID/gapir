@@ -88,7 +88,7 @@ impl Stt {
 
 struct Loaded {
     session: Session,
-    _model: Model,
+    model: Model,
 }
 
 struct Worker {
@@ -102,6 +102,11 @@ struct Worker {
 
 impl Worker {
     fn run(mut self, jobs: mpsc::Receiver<Job>) {
+        // Windows builds load the CPU and Vulkan backends as DLLs; a missing GPU driver
+        // leaves only the CPU. A no-op where the backends are linked in (macOS).
+        if let Err(error) = transcribe_cpp::init_backends_default() {
+            log::error!("speech backends failed to load: {error}");
+        }
         loop {
             match jobs.recv_timeout(IDLE_UNLOAD) {
                 Ok(Job::Prepare) => {
@@ -127,15 +132,16 @@ impl Worker {
             return true;
         }
         let started = Instant::now();
-        let loaded = Model::load(&self.path).and_then(|model| {
-            model.session().map(|session| Loaded {
-                session,
-                _model: model,
-            })
-        });
+        let loaded = Model::load(&self.path)
+            .and_then(|model| model.session().map(|session| Loaded { session, model }));
         match loaded {
             Ok(loaded) => {
-                log::info!("model loaded in {} ms", started.elapsed().as_millis());
+                let device = loaded.model.device().map(|d| d.description);
+                log::info!(
+                    "model loaded in {} ms on {}",
+                    started.elapsed().as_millis(),
+                    device.as_deref().unwrap_or("unknown device")
+                );
                 self.loaded = Some(loaded);
                 true
             }
@@ -205,7 +211,9 @@ mod tests {
     #[test]
     #[ignore]
     fn transcribes_real_speech() {
+        transcribe_cpp::init_backends_default().unwrap();
         let model = Model::load(std::env::var("GAPIR_MODEL").unwrap()).unwrap();
+        println!("device: {}", model.device().unwrap().description);
         let mut session = model.session().unwrap();
         let bytes = std::fs::read(std::env::var("GAPIR_WAV").unwrap()).unwrap();
         let samples: Vec<f32> = bytes[44..]
@@ -219,6 +227,8 @@ mod tests {
             timestamps: TimestampKind::None,
             ..RunOptions::default()
         };
+        // The first run includes warm-up (GPU shader compilation), so time the second.
+        session.run(&samples, &options).unwrap();
         let started = Instant::now();
         let transcript = session.run(&samples, &options).unwrap();
         println!("{} ms: {}", started.elapsed().as_millis(), transcript.text);

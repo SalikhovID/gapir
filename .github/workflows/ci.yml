@@ -32,6 +32,11 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      - uses: jakoch/install-vulkan-sdk-action@v1
+        if: runner.os == 'Windows'
+        with:
+          vulkan_version: 1.4.363.0
+          cache: true
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -54,6 +59,10 @@ jobs:
         with:
           fetch-depth: 0 # the tags decide the next version
       - uses: dtolnay/rust-toolchain@stable
+      - uses: jakoch/install-vulkan-sdk-action@v1
+        with:
+          vulkan_version: 1.4.363.0
+          cache: true
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
