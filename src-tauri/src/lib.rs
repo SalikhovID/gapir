@@ -2,11 +2,14 @@
 
 mod commands;
 mod desktop;
+#[cfg(target_os = "macos")]
 mod grant;
 mod hotkeys;
 mod lifecycle;
+#[cfg_attr(windows, path = "output_windows.rs")]
 mod output;
 mod overlay;
+#[cfg_attr(windows, path = "permissions_windows.rs")]
 mod permissions;
 mod recorder;
 mod stt;
@@ -117,10 +120,14 @@ fn on_model_broken(app: &AppHandle, shared: &Shared) {
 }
 
 fn log_folder() -> PathBuf {
-    std::env::var_os("HOME")
+    #[cfg(windows)]
+    let (base, logs) = ("LOCALAPPDATA", "Gapir/logs");
+    #[cfg(not(windows))]
+    let (base, logs) = ("HOME", "Library/Logs/Gapir");
+    std::env::var_os(base)
         .map(PathBuf::from)
         .unwrap_or_default()
-        .join("Library/Logs/Gapir")
+        .join(logs)
 }
 
 pub fn run() {
@@ -144,8 +151,12 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec!["--hidden"]),
-        ))
+        ));
+    #[cfg(target_os = "macos")]
+    let app = app
         .plugin(tauri_nspanel::init())
+        .on_window_event(lifecycle::on_window_event);
+    let app = app
         .invoke_handler(tauri::generate_handler![
             commands::get_status,
             commands::list_mics,
@@ -174,6 +185,7 @@ pub fn run() {
             });
             app.manage(shared.clone());
 
+            #[cfg(target_os = "macos")]
             app.set_menu(lifecycle::app_menu(&handle)?)?;
             lifecycle::create_tray(&handle)?;
             overlay::create(&handle);
@@ -200,7 +212,6 @@ pub fn run() {
             Ok(())
         })
         .on_menu_event(lifecycle::on_menu_event)
-        .on_window_event(lifecycle::on_window_event)
         .build(tauri::generate_context!())
         .expect("failed to build Gapir");
     app.run(lifecycle::on_run_event);

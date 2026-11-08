@@ -2,7 +2,8 @@ name: CI
 
 # Pull requests are checked. Every push to main, which includes a merged pull request, is
 # checked and then released: the patch version goes up, a "chore: release" commit and the
-# vX.Y.Z tag are added, and the signed app is published as a GitHub release.
+# vX.Y.Z tag are added, and the signed macOS app and the Windows installer are published as
+# one GitHub release.
 # Put [skip ci] in a commit message to push to main without a release.
 # A minor or major bump is made by hand: scripts/set-version.sh 0.2.0, commit, push.
 on:
@@ -21,13 +22,21 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-latest
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      - uses: jakoch/install-vulkan-sdk-action@v1
+        if: runner.os == 'Windows'
+        with:
+          vulkan_version: 1.4.363.0
+          cache: true
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -35,8 +44,45 @@ jobs:
       - run: cargo clippy --workspace --all-targets -- -D warnings
       - run: cargo test --workspace
 
-  release:
+  # Built on the same commit with the same version as the macOS app, so the release gets
+  # both at once and the Windows updater never sees a release without its installer.
+  windows:
     needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the tags decide the next version
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: jakoch/install-vulkan-sdk-action@v1
+        with:
+          vulkan_version: 1.4.363.0
+          cache: true
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Build
+        run: |
+          version="$(scripts/set-version.sh)"
+          # Without UTF-8 mode Python writes the cp1252 console encoding and fails.
+          PYTHONUTF8=1 python scripts/third-party-licenses.py > THIRD-PARTY-LICENSES.txt
+          npx -y @tauri-apps/cli@2.12.4 build --bundles nsis
+          cp "target/release/bundle/nsis/Gapir_${version}_x64-setup.exe" Gapir-windows-x64-setup.exe
+          sha256sum Gapir-windows-x64-setup.exe > Gapir-windows-x64-setup.exe.sha256
+          cat Gapir-windows-x64-setup.exe.sha256
+      - uses: actions/upload-artifact@v7
+        with:
+          name: windows
+          path: Gapir-windows-x64-setup.exe*
+          if-no-files-found: error
+
+  release:
+    needs: [test, windows]
     if: github.ref == 'refs/heads/main'
     runs-on: macos-latest
     timeout-minutes: 60
@@ -69,6 +115,10 @@ jobs:
           MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
         run: scripts/package.sh
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: windows
+
       - name: Check the build
         env:
           GH_TOKEN: ${{ github.token }}
@@ -84,6 +134,7 @@ jobs:
           # install.sh promises macOS 13, so the build must not ask for more.
           check [ "$(vtool -show-build "$binary" | awk '/minos/ {print $2}')" = "13.0" ]
           check shasum -a 256 -c Gapir-macos-arm64.zip.sha256
+          check shasum -a 256 -c Gapir-windows-x64-setup.exe.sha256
 
           # Another certificate would make macOS forget the Microphone and Accessibility
           # permissions at every update, so the signature has to match the last release.
@@ -114,4 +165,5 @@ jobs:
 
           git push --quiet origin HEAD:main
           gh release create "v$VERSION" Gapir-macos-arm64.zip Gapir-macos-arm64.zip.sha256 \
+            Gapir-windows-x64-setup.exe Gapir-windows-x64-setup.exe.sha256 \
             --target "$(git rev-parse HEAD)" --title "Gapir v$VERSION" "${notes[@]}"

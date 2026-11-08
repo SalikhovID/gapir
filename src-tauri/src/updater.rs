@@ -8,8 +8,26 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
 const LATEST_RELEASE: &str = "https://api.github.com/repos/SalikhovID/gapir/releases/latest";
+#[cfg(target_os = "macos")]
 const INSTALL_COMMAND: &str =
     "curl -fsSL https://raw.githubusercontent.com/SalikhovID/gapir/main/install.sh | bash";
+/// Downloads the installer, checks its hash and runs it in passive mode: it closes Gapir,
+/// shows only a progress bar and starts the new version (`/R`).
+#[cfg(windows)]
+const INSTALL_COMMAND: &str = r#"$ErrorActionPreference = 'Stop'
+try {
+    $url = 'https://github.com/SalikhovID/gapir/releases/latest/download/Gapir-windows-x64-setup.exe'
+    $file = Join-Path $env:TEMP 'Gapir-windows-x64-setup.exe'
+    Write-Host 'Gapir yangilanmoqda...'
+    Invoke-WebRequest $url -OutFile $file -UseBasicParsing
+    Invoke-WebRequest "$url.sha256" -OutFile "$file.sha256" -UseBasicParsing
+    $expected = (Get-Content "$file.sha256" -Raw).Split(' ')[0]
+    if ((Get-FileHash $file -Algorithm SHA256).Hash -ne $expected) { throw 'yuklangan fayl buzilgan' }
+    Start-Process $file '/P /R'
+} catch {
+    Write-Host "Xato: $_"
+    Read-Host 'Oynani yopish uchun Enter bosing'
+}"#;
 const FIRST_CHECK: Duration = Duration::from_secs(60);
 const CHECK_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
 
@@ -52,6 +70,7 @@ pub fn spawn(app: AppHandle, enabled: impl Fn() -> bool + Send + 'static) {
 }
 
 /// Runs the install command in a visible Terminal window. The app is replaced by the script.
+#[cfg(target_os = "macos")]
 pub fn run_update(app: &AppHandle) {
     let result = app
         .path()
@@ -66,6 +85,29 @@ pub fn run_update(app: &AppHandle) {
             std::process::Command::new("/usr/bin/open")
                 .arg(&script)
                 .status()?;
+            Ok(())
+        });
+    if let Err(error) = result {
+        log::error!("update could not start: {error}");
+    }
+}
+
+/// Runs the install command in a visible PowerShell window. The installer replaces the app.
+#[cfg(windows)]
+pub fn run_update(app: &AppHandle) {
+    let result = app
+        .path()
+        .app_cache_dir()
+        .map_err(std::io::Error::other)
+        .and_then(|dir| {
+            std::fs::create_dir_all(&dir)?;
+            // A file, not -Command: PowerShell 5 mangles quotes passed on the command line.
+            let script = dir.join("gapir-update.ps1");
+            std::fs::write(&script, INSTALL_COMMAND)?;
+            std::process::Command::new("powershell")
+                .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
+                .arg(&script)
+                .spawn()?;
             Ok(())
         });
     if let Err(error) = result {

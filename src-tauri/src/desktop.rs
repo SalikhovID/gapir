@@ -1,7 +1,7 @@
 //! Connects the platform-independent engine to the real microphone, model, keyboard and UI.
 
 use crate::hotkeys::Keys;
-use crate::output::MacOutput;
+use crate::output::SystemOutput;
 use crate::recorder::Mic;
 use crate::stt::Stt;
 use crate::{lifecycle, overlay, Shared};
@@ -15,7 +15,7 @@ pub struct Desktop {
     app: AppHandle,
     shared: Arc<Shared>,
     keys: Arc<Keys>,
-    output: MacOutput,
+    output: SystemOutput,
     mic: Mic,
     stt: Stt,
 }
@@ -26,7 +26,7 @@ impl Desktop {
         Self {
             app,
             shared,
-            output: MacOutput::new(keys.clone()),
+            output: SystemOutput::new(keys.clone()),
             keys,
             mic,
             stt,

@@ -22,7 +22,13 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             fn_enabled: true,
-            toggle_hotkey: "Cmd+Shift+G".into(),
+            // Windows reserves most Win-key chords for the shell.
+            toggle_hotkey: if cfg!(windows) {
+                "Ctrl+Shift+G"
+            } else {
+                "Cmd+Shift+G"
+            }
+            .into(),
             mic_device: None,
             autostart: true,
             sounds: false,
@@ -65,13 +71,7 @@ mod tests {
     #[test]
     fn missing_file_gives_defaults() {
         let (_dir, path) = path();
-        let s = Settings::load(&path);
-        assert!(s.fn_enabled);
-        assert_eq!(s.toggle_hotkey, "Cmd+Shift+G");
-        assert_eq!(s.mic_device, None);
-        assert!(s.autostart);
-        assert!(!s.sounds);
-        assert!(s.update_check);
+        assert_eq!(Settings::load(&path), Settings::default());
     }
 
     #[test]

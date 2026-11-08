@@ -1,6 +1,6 @@
 # Gapir
 
-Mac uchun oʻzbekcha ovozli yozuv. Istalgan matn maydonida `fn` tugmasini 1 soniya bosib turing va gapiring, aytganingiz kursor turgan joyga yoziladi. Ovoz shu kompyuterda matnga oʻgiriladi va hech qayerga yuborilmaydi.
+Mac va Windows uchun oʻzbekcha ovozli yozuv. Istalgan matn maydonida `fn` tugmasini 1 soniya bosib turing va gapiring, aytganingiz kursor turgan joyga yoziladi. Ovoz shu kompyuterda matnga oʻgiriladi va hech qayerga yuborilmaydi.
 
 ## Oʻrnatish
 
@@ -18,6 +18,12 @@ Birinchi ochilishda Gapir ikki ruxsat soʻraydi:
 - **Accessibility**: `fn` tugmasini sezish va matnni yozish uchun. System Settings ochiladi, roʻyxatda Gapir'ni yoqing.
 
 Apple Silicon (M1 va undan yangi) va macOS 13 yoki undan yangisi kerak.
+
+### Windows
+
+[Oxirgi release](https://github.com/SalikhovID/gapir/releases/latest)dan `Gapir-windows-x64-setup.exe` ni yuklab, ishga tushiring. Installer imzolanmagan, shuning uchun SmartScreen ogohlantiradi: **More info** → **Run anyway**. Model birinchi ochilishda ilovaning oʻzida yuklanadi.
+
+Windows'da `fn` oʻrniga **oʻng Ctrl** ishlaydi, `⌘⇧G` oʻrniga `Ctrl+Shift+G`. Windows 10 yoki 11 (x64) kerak. Nutq Vulkan orqali videokartada matnga oʻgiriladi (NVIDIA, AMD, Intel). Vulkan boʻlmasa, Gapir CPU'da ishlaydi, lekin sekinroq.
 
 ## Ishlatish
 
@@ -44,7 +50,7 @@ Gapir fonda ishlaydi va menu bar'da turadi. `⌘Q` faqat oynani yopadi. Butunlay
 
 ## Yangilash
 
-Yangi versiya chiqsa, menu bar menyusida **Yangilash** paydo boʻladi. Buning uchun Gapir kuniga bir marta GitHub'dan versiya raqamini soʻraydi, boshqa hech narsa yuborilmaydi. Tekshiruvni sozlamada oʻchirish mumkin.
+Yangi versiya chiqsa, menu bar menyusida **Yangilash** paydo boʻladi. Windows'da u installer'ni yuklab, hash'ini tekshiradi va Gapir'ni yangilab qayta ochadi. Buning uchun Gapir kuniga bir marta GitHub'dan versiya raqamini soʻraydi, boshqa hech narsa yuborilmaydi. Tekshiruvni sozlamada oʻchirish mumkin.
 
 ## Oʻchirish
 
@@ -63,9 +69,9 @@ cargo test --workspace
 npx @tauri-apps/cli@2 build --bundles app
 ```
 
-Build uchun Rust, CMake, Node va Command Line Tools kerak. Linux va Windows hali yoʻq.
+Build uchun Rust, CMake, Node va Command Line Tools kerak, Windows'da Visual Studio Build Tools va [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows). Windows installer: `npx @tauri-apps/cli@2 build --bundles nsis`. Linux hali yoʻq.
 
-Release avtomatik chiqadi. `main`ga har bir push yoki merge [CI](.github/workflows/ci.yml)ni ishga tushiradi: u fmt, clippy va testlarni tekshiradi, patch versiyani bittaga oshiradi (`chore: release` commit va `vX.Y.Z` tegi), ilovani [`scripts/package.sh`](scripts/package.sh) bilan quradi, imzolaydi va GitHub release qilib yuklaydi. Release kerak boʻlmasa, commit xabariga `[skip ci]` yozing. Minor yoki major versiya uchun `scripts/set-version.sh 0.2.0` ni ishga tushirib, oʻzgarishni commit qiling: CI aynan shu versiyani chiqaradi. CI ishlamay qolsa, release qoʻlda ham chiqadi: `scripts/package.sh` zip yasaydi (`MACOS_CERT_P12` va `MACOS_CERT_PASSWORD` kerak), keyin `gh release create` bilan yuklanadi.
+Release avtomatik chiqadi. `main`ga har bir push yoki merge [CI](.github/workflows/ci.yml)ni ishga tushiradi: u fmt, clippy va testlarni macOS va Windows'da tekshiradi, patch versiyani bittaga oshiradi (`chore: release` commit va `vX.Y.Z` tegi), ilovani [`scripts/package.sh`](scripts/package.sh) bilan quradi, imzolaydi, Windows installer'ni ham quradi va ikkalasini bitta GitHub release qilib yuklaydi. Release kerak boʻlmasa, commit xabariga `[skip ci]` yozing. Minor yoki major versiya uchun `scripts/set-version.sh 0.2.0` ni ishga tushirib, oʻzgarishni commit qiling: CI aynan shu versiyani chiqaradi. CI ishlamay qolsa, release qoʻlda ham chiqadi: `scripts/package.sh` zip yasaydi (`MACOS_CERT_P12` va `MACOS_CERT_PASSWORD` kerak), keyin `gh release create` bilan yuklanadi.
 
 Model [`scripts/convert-model.py`](scripts/convert-model.py) bilan asl fayldan olinadi, aniq versiyalari [model release](https://github.com/SalikhovID/gapir/releases/tag/model-rubaistt-v2-q5km) izohida yozilgan.
 

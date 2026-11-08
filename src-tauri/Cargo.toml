@@ -25,7 +25,7 @@ tauri = { version = "2", features = ["tray-icon", "image-png", "macos-private-ap
 tauri-plugin-autostart = "2"
 tauri-plugin-log = "2"
 tauri-plugin-single-instance = "2"
-transcribe-cpp = "0.4.1"
+transcribe-cpp = { version = "0.4.1", default-features = false }
 ureq = "3"
 
 [target.'cfg(target_os = "macos")'.dependencies]
@@ -38,3 +38,9 @@ objc2-core-foundation = { version = "0.3", features = ["CFArray", "CFBase", "CFN
 objc2-core-graphics = { version = "0.3", features = ["CGEvent", "CGEventSource", "CGEventTypes", "CGRemoteOperation", "CGWindow"] }
 objc2-foundation = { version = "0.3", features = ["NSArray", "NSBundle", "NSDictionary", "NSEnumerator", "NSGeometry", "NSString", "NSURL", "NSValue"] }
 tauri-nspanel = "2.1.1"
+transcribe-cpp = { version = "0.4.1", features = ["metal"] }
+
+[target.'cfg(windows)'.dependencies]
+# Backends as DLLs chosen at runtime: Vulkan where the GPU driver has it, otherwise the CPU.
+transcribe-cpp = { version = "0.4.1", features = ["vulkan", "dynamic-backends"] }
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_DataExchange", "Win32_System_Diagnostics_Debug", "Win32_System_Memory", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }

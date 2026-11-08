@@ -1,7 +1,9 @@
 //! Commands called from the setup and settings window.
 
+#[cfg(target_os = "macos")]
+use crate::grant;
 use crate::stt::MODEL;
-use crate::{grant, permissions, Shared};
+use crate::{permissions, Shared};
 use gapir_core::model_store;
 use gapir_core::settings::Settings;
 use serde::Serialize;
@@ -55,10 +57,12 @@ pub fn list_mics() -> Vec<MicInfo> {
 }
 
 #[tauri::command]
+#[cfg_attr(not(target_os = "macos"), allow(unused_variables))]
 pub fn request_permission(app: AppHandle, kind: String) {
     match kind.as_str() {
         "mic" if permissions::mic_status() == "unknown" => permissions::request_mic(),
         "mic" => permissions::open_pane("mic"),
+        #[cfg(target_os = "macos")]
         "accessibility" => {
             permissions::request_accessibility();
             permissions::open_pane("accessibility");

@@ -2,16 +2,20 @@
 //! full-screen ones, without ever taking focus from the text field being dictated into.
 
 use gapir_core::engine::{Cue, Notice, View};
+#[cfg(target_os = "macos")]
 use objc2_app_kit::NSSound;
+#[cfg(target_os = "macos")]
 use objc2_foundation::NSString;
 use serde_json::json;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, LogicalPosition, Manager, WebviewUrl};
+#[cfg(target_os = "macos")]
 use tauri_nspanel::{
     tauri_panel, CollectionBehavior, ManagerExt, PanelBuilder, PanelLevel, StyleMask,
 };
 
+#[cfg(target_os = "macos")]
 tauri_panel! {
     panel!(OverlayPanel {
         config: {
@@ -33,6 +37,7 @@ static NOTICE_ACTIVE: AtomicBool = AtomicBool::new(false);
 /// Only the latest notice may hide the pill.
 static NOTICE_GENERATION: AtomicU64 = AtomicU64::new(0);
 
+#[cfg(target_os = "macos")]
 pub fn create(app: &AppHandle) {
     let panel = PanelBuilder::<_, OverlayPanel>::new(app, LABEL)
         .url(WebviewUrl::App("overlay.html".into()))
@@ -61,6 +66,30 @@ pub fn create(app: &AppHandle) {
             if let Some(window) = app.get_webview_window(LABEL) {
                 let _ = window.set_ignore_cursor_events(true);
             }
+        }
+        Err(error) => log::error!("overlay could not be created: {error}"),
+    }
+}
+
+/// A borderless, never-focused, always-on-top window plays the panel's part on Windows.
+#[cfg(windows)]
+pub fn create(app: &AppHandle) {
+    let window =
+        tauri::WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("overlay.html".into()))
+            .title("Gapir")
+            .inner_size(WIDTH, HEIGHT)
+            .decorations(false)
+            .transparent(true)
+            .shadow(false)
+            .resizable(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .focusable(false)
+            .visible(false)
+            .build();
+    match window {
+        Ok(window) => {
+            let _ = window.set_ignore_cursor_events(true);
         }
         Err(error) => log::error!("overlay could not be created: {error}"),
     }
@@ -96,6 +125,7 @@ fn place(app: &AppHandle) {
     });
 }
 
+#[cfg(target_os = "macos")]
 fn set_visible(app: &AppHandle, visible: bool) {
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
@@ -107,6 +137,22 @@ fn set_visible(app: &AppHandle, visible: bool) {
             panel.order_front_regardless();
         } else {
             panel.hide();
+        }
+    });
+}
+
+#[cfg(windows)]
+fn set_visible(app: &AppHandle, visible: bool) {
+    let handle = app.clone();
+    let _ = app.run_on_main_thread(move || {
+        let Some(window) = handle.get_webview_window(LABEL) else {
+            return;
+        };
+        if visible {
+            place(&handle);
+            let _ = window.show();
+        } else {
+            let _ = window.hide();
         }
     });
 }
@@ -176,6 +222,7 @@ pub fn level(app: &AppHandle, value: f32) {
     emit(app, json!({ "level": value }));
 }
 
+#[cfg(target_os = "macos")]
 pub fn play_cue(app: &AppHandle, cue: Cue) {
     let name = match cue {
         Cue::Start => "Tink",
@@ -186,4 +233,16 @@ pub fn play_cue(app: &AppHandle, cue: Cue) {
             sound.play();
         }
     });
+}
+
+#[cfg(windows)]
+pub fn play_cue(_app: &AppHandle, cue: Cue) {
+    use windows_sys::Win32::System::Diagnostics::Debug::MessageBeep;
+    use windows_sys::Win32::UI::WindowsAndMessaging::{MB_ICONASTERISK, MB_OK};
+    let sound = match cue {
+        Cue::Start => MB_OK,
+        Cue::Stop => MB_ICONASTERISK,
+    };
+    // SAFETY: plays a system sound asynchronously; no pointers involved.
+    unsafe { MessageBeep(sound) };
 }

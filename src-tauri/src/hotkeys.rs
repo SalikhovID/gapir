@@ -23,6 +23,13 @@ pub enum Signal {
     UserInput,
 }
 
+/// The hold-to-talk key. PC keyboards handle `fn` in firmware, so Windows never sees it.
+const HOLD_KEY: Modifiers = if cfg!(windows) {
+    Modifiers::CTRL_RIGHT
+} else {
+    Modifiers::FN
+};
+
 /// Maps the raw event stream to signals. Stateful because `fn` chords and auto-repeat
 /// can only be told apart by what is currently held.
 #[derive(Debug, Default)]
@@ -33,7 +40,7 @@ pub struct Classifier {
 
 impl Classifier {
     pub fn classify(&mut self, event: &KeyEvent, config: &KeyConfig) -> Vec<Signal> {
-        if event.changed_modifier == Some(Modifiers::FN) {
+        if event.changed_modifier == Some(HOLD_KEY) {
             if !config.fn_enabled {
                 return vec![];
             }
@@ -184,7 +191,7 @@ pub fn spawn(keys: Arc<Keys>, input: Sender<Input>, on_access: impl Fn(bool) + S
         .spawn(move || {
             let mut had_access = None;
             loop {
-                let access = handy_keys::check_accessibility();
+                let access = crate::permissions::accessibility();
                 if had_access != Some(access) {
                     on_access(access);
                     had_access = Some(access);
@@ -207,7 +214,7 @@ pub fn spawn(keys: Arc<Keys>, input: Sender<Input>, on_access: impl Fn(bool) + S
                     match listener.recv_timeout(Duration::from_secs(2)) {
                         Ok(event) => keys.handle(&mut classifier, &event, &input),
                         Err(handy_keys::Error::Timeout) => {
-                            if !handy_keys::check_accessibility() {
+                            if !crate::permissions::accessibility() {
                                 break;
                             }
                         }
@@ -235,14 +242,10 @@ mod tests {
 
     fn fn_key(down: bool) -> KeyEvent {
         KeyEvent {
-            modifiers: if down {
-                Modifiers::FN
-            } else {
-                Modifiers::empty()
-            },
+            modifiers: if down { HOLD_KEY } else { Modifiers::empty() },
             key: None,
             is_key_down: down,
-            changed_modifier: Some(Modifiers::FN),
+            changed_modifier: Some(HOLD_KEY),
         }
     }
 
@@ -332,7 +335,7 @@ mod tests {
         let mut c = Classifier::default();
         c.classify(&fn_key(true), &config());
         assert_eq!(
-            c.classify(&key(Modifiers::FN, Key::RightArrow, true), &config()),
+            c.classify(&key(HOLD_KEY, Key::RightArrow, true), &config()),
             vec![Signal::Machine(Event::FnChord), Signal::UserInput]
         );
     }
@@ -382,7 +385,7 @@ mod tests {
     #[test]
     fn toggle_is_always_blocked_and_esc_only_during_a_session() {
         let keys = Keys::new(&Settings::default());
-        let toggle: Hotkey = "Cmd+Shift+G".parse().unwrap();
+        let toggle: Hotkey = Settings::default().toggle_hotkey.parse().unwrap();
         assert_eq!(blocked(&keys), HashSet::from([toggle]));
         keys.capture_esc(true);
         assert_eq!(blocked(&keys), HashSet::from([toggle, esc_hotkey()]));
@@ -392,6 +395,7 @@ mod tests {
 
     #[test]
     fn broken_hotkey_text_falls_back_to_the_default() {
-        assert_eq!(parse_toggle("not a hotkey"), "Cmd+Shift+G".parse().unwrap());
+        let default: Hotkey = Settings::default().toggle_hotkey.parse().unwrap();
+        assert_eq!(parse_toggle("not a hotkey"), default);
     }
 }
