@@ -76,7 +76,7 @@ function renderSettings() {
   $("fn-enabled").checked = settings.fn_enabled;
   $("autostart").checked = settings.autostart;
   $("sounds").checked = settings.sounds;
-  $("update-check").checked = settings.update_check;
+  $("update-check").checked = settings.auto_update;
   $("auto-send").checked = settings.auto_send;
   $("mic").value = settings.mic_device ?? "";
   $("version").textContent = `Gapir ${status.version}`;
@@ -186,7 +186,7 @@ $("mic").addEventListener("change", (event) => save({ mic_device: event.target.v
 $("fn-enabled").addEventListener("change", (event) => save({ fn_enabled: event.target.checked }));
 $("autostart").addEventListener("change", (event) => save({ autostart: event.target.checked }));
 $("sounds").addEventListener("change", (event) => save({ sounds: event.target.checked }));
-$("update-check").addEventListener("change", (event) => save({ update_check: event.target.checked }));
+$("update-check").addEventListener("change", (event) => save({ auto_update: event.target.checked }));
 $("auto-send").addEventListener("change", (event) => save({ auto_send: event.target.checked }));
 
 listen("model-progress", ({ payload }) => {
