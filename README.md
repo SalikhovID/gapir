@@ -50,7 +50,7 @@ Gapir fonda ishlaydi va menu bar'da turadi. `⌘Q` faqat oynani yopadi. Butunlay
 
 ## Yangilash
 
-Yangi versiya chiqsa, menu bar menyusida **Yangilash** paydo boʻladi. Windows'da u installer'ni yuklab, hash'ini tekshiradi va Gapir'ni yangilab qayta ochadi. Buning uchun Gapir kuniga bir marta GitHub'dan versiya raqamini soʻraydi, boshqa hech narsa yuborilmaydi. Tekshiruvni sozlamada oʻchirish mumkin.
+Gapir har 5 daqiqada GitHub'dan oxirgi versiya raqamini soʻraydi, boshqa hech narsa yuborilmaydi. Yangi versiya chiqsa va siz gapirmayotgan boʻlsangiz, Gapir uni fonda yuklaydi, hash'ini tekshiradi, oʻrnatadi va oynasiz qayta ochiladi. Buni sozlamadagi **Avtomatik yangilash** bilan oʻchirish mumkin.
 
 ## Oʻchirish
 
