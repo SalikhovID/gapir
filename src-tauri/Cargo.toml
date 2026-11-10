@@ -43,4 +43,6 @@ transcribe-cpp = { version = "0.4.1", features = ["metal"] }
 [target.'cfg(windows)'.dependencies]
 # Backends as DLLs chosen at runtime: Vulkan where the GPU driver has it, otherwise the CPU.
 transcribe-cpp = { version = "0.4.1", features = ["vulkan", "dynamic-backends"] }
+# Only so build.rs gets DEP_TRANSCRIBE_RUNTIME_DIR, the folder with those DLLs.
+transcribe-cpp-sys = { version = "0.4.1", default-features = false }
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_DataExchange", "Win32_System_Diagnostics_Debug", "Win32_System_Memory", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }

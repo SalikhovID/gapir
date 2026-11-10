@@ -4,7 +4,36 @@ fn main() {
         println!("cargo:rustc-link-arg=-Wl,-weak_framework,CoreAudio");
         link_compiler_runtime();
     }
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
+        copy_speech_dlls();
+    }
     tauri_build::build()
+}
+
+/// transcribe-cpp-sys puts its DLLs next to the binaries only when its own build script runs. A
+/// cached build (CI) skips it and the tests fail with STATUS_DLL_NOT_FOUND, so copy them each time.
+fn copy_speech_dlls() {
+    let source =
+        std::env::var("DEP_TRANSCRIBE_RUNTIME_DIR").expect("transcribe-cpp-sys is built shared");
+    let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"));
+    // OUT_DIR is <profile>/build/<crate>-<hash>/out.
+    let profile = out_dir
+        .ancestors()
+        .nth(3)
+        .expect("OUT_DIR is inside the profile dir");
+    let dlls: Vec<_> = std::fs::read_dir(&source)
+        .unwrap_or_else(|error| panic!("{source}: {error}"))
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "dll"))
+        .collect();
+    assert!(!dlls.is_empty(), "no DLLs in {source}");
+    for dir in [profile.to_path_buf(), profile.join("deps")] {
+        for dll in &dlls {
+            // A running gapir.exe locks its copy; that copy is already in place.
+            let _ = std::fs::copy(dll, dir.join(dll.file_name().expect("file name")));
+        }
+    }
 }
 
 /// ggml-metal guards newer Metal APIs with `@available`. With a deployment target older than the
