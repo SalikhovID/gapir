@@ -2,8 +2,8 @@ name: CI
 
 # Pull requests are checked. Every push to main, which includes a merged pull request, is
 # checked and then released: the patch version goes up, a "chore: release" commit and the
-# vX.Y.Z tag are added, and the signed macOS app and the Windows installer are published as
-# one GitHub release.
+# vX.Y.Z tag are added, and the signed macOS app, the Windows installer and the Linux AppImage
+# are published as one GitHub release.
 # Put [skip ci] in a commit message to push to main without a release.
 # A minor or major bump is made by hand: scripts/set-version.sh 0.2.0, commit, push.
 on:
@@ -20,11 +20,16 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # WebKitGTK, tray and menu for Tauri, ALSA headers for the audio library.
+  LINUX_PACKAGES: libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libasound2-dev
+
 jobs:
   test:
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
+        # 22.04: the AppImage carries no glibc, so it runs on distributions at least this new.
+        os: [macos-latest, windows-latest, ubuntu-22.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     steps:
@@ -37,6 +42,9 @@ jobs:
         with:
           vulkan_version: 1.4.363.0
           cache: true
+      - name: Install Linux build packages
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -45,7 +53,7 @@ jobs:
       - run: cargo test --workspace
 
   # Built on the same commit with the same version as the macOS app, so the release gets
-  # both at once and the Windows updater never sees a release without its installer.
+  # all of them at once and no updater ever sees a release without its file.
   windows:
     needs: test
     if: github.ref == 'refs/heads/main'
@@ -81,8 +89,39 @@ jobs:
           path: Gapir-windows-x64-setup.exe*
           if-no-files-found: error
 
+  linux:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the tags decide the next version
+      - uses: dtolnay/rust-toolchain@stable
+      - run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Build
+        env:
+          # linuxdeploy is itself an AppImage; this runs it without FUSE.
+          APPIMAGE_EXTRACT_AND_RUN: 1
+        run: |
+          version="$(scripts/set-version.sh)"
+          python3 scripts/third-party-licenses.py > THIRD-PARTY-LICENSES.txt
+          npx -y @tauri-apps/cli@2.12.4 build --bundles appimage
+          cp "target/release/bundle/appimage/Gapir_${version}_amd64.AppImage" Gapir-linux-x86_64.AppImage
+          sha256sum --binary Gapir-linux-x86_64.AppImage > Gapir-linux-x86_64.AppImage.sha256
+          cat Gapir-linux-x86_64.AppImage.sha256
+      - uses: actions/upload-artifact@v7
+        with:
+          name: linux
+          path: Gapir-linux-x86_64.AppImage*
+          if-no-files-found: error
+
   release:
-    needs: [test, windows]
+    needs: [test, windows, linux]
     if: github.ref == 'refs/heads/main'
     runs-on: macos-latest
     timeout-minutes: 60
@@ -118,6 +157,9 @@ jobs:
       - uses: actions/download-artifact@v8
         with:
           name: windows
+      - uses: actions/download-artifact@v8
+        with:
+          name: linux
 
       - name: Check the build
         env:
@@ -134,6 +176,7 @@ jobs:
           # install.sh promises macOS 13, so the build must not ask for more.
           check [ "$(vtool -show-build "$binary" | awk '/minos/ {print $2}')" = "13.0" ]
           check shasum -a 256 -c Gapir-macos-arm64.zip.sha256
+          check shasum -a 256 -c Gapir-linux-x86_64.AppImage.sha256
           check shasum -a 256 -c Gapir-windows-x64-setup.exe.sha256
 
           # Another certificate would make macOS forget the Microphone and Accessibility
@@ -166,4 +209,5 @@ jobs:
           git push --quiet origin HEAD:main
           gh release create "v$VERSION" Gapir-macos-arm64.zip Gapir-macos-arm64.zip.sha256 \
             Gapir-windows-x64-setup.exe Gapir-windows-x64-setup.exe.sha256 \
+            Gapir-linux-x86_64.AppImage Gapir-linux-x86_64.AppImage.sha256 \
             --target "$(git rev-parse HEAD)" --title "Gapir v$VERSION" "${notes[@]}"
