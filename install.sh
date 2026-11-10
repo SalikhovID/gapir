@@ -60,9 +60,10 @@ install_app() {
         mkdir -p "$target"
     fi
 
-    pkill -x gapir 2>/dev/null || true
+    # -a: during a self-update Gapir is this script's ancestor, which pkill skips by default.
+    pkill -a -x gapir 2>/dev/null || true
     for _ in 1 2 3 4 5 6; do
-        pgrep -x gapir >/dev/null || break
+        pgrep -a -x gapir >/dev/null || break
         sleep 0.5
     done
 
