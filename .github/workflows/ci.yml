@@ -107,6 +107,10 @@ jobs:
         env:
           # linuxdeploy is itself an AppImage; this runs it without FUSE.
           APPIMAGE_EXTRACT_AND_RUN: 1
+          # ggml tunes to the build host by default, and the runner has AVX-512: most user CPUs
+          # then crash with SIGILL. shortcut: AVX2 floor (Haswell, Zen and newer), use the
+          # dynamic-backends feature like Windows if older CPUs matter.
+          TRANSCRIBE_CMAKE_ARGS: -DGGML_NATIVE=OFF -DGGML_SSE42=ON -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DGGML_BMI2=ON
         run: |
           version="$(scripts/set-version.sh)"
           python3 scripts/third-party-licenses.py > THIRD-PARTY-LICENSES.txt
