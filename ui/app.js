@@ -142,6 +142,7 @@ async function onCaptureKey(event) {
     capturing = false;
     window.removeEventListener("keydown", onCaptureKey, true);
     window.removeEventListener("blur", stopCapture);
+    $("toggle-keys").classList.remove("capture");
     if (await save({ toggle_hotkey: hotkey })) {
       $("toggle-text").firstChild.textContent = TOGGLE_HELP;
     }
@@ -152,6 +153,7 @@ async function onCaptureKey(event) {
 async function startCapture() {
   capturing = true;
   $("toggle-keys").replaceChildren();
+  $("toggle-keys").classList.add("capture");
   $("toggle-text").firstChild.textContent = "Yangi birikmani bosing. Esc bekor qiladi. ";
   await invoke("pause_hotkeys", { paused: true });
   window.addEventListener("keydown", onCaptureKey, true);
@@ -195,6 +197,15 @@ listen("model-done", async ({ payload }) => {
   }
   await refresh();
   await loadMics();
+});
+
+// Cards light up under the pointer (see `.card::before`).
+document.addEventListener("pointermove", (event) => {
+  const card = event.target.closest?.(".card");
+  if (!card) return;
+  const box = card.getBoundingClientRect();
+  card.style.setProperty("--x", `${event.clientX - box.left}px`);
+  card.style.setProperty("--y", `${event.clientY - box.top}px`);
 });
 
 loadMics().then(refresh);
