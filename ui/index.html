@@ -9,90 +9,105 @@
     <div class="drag" data-tauri-drag-region></div>
     <main>
       <header>
-        <h1>Gapir</h1>
-        <p>Oʻzbekcha gapiring, matn kursor turgan joyga yoziladi.</p>
+        <div class="orb" aria-hidden="true">
+          <span class="bars"><i></i><i></i><i></i><i></i><i></i></span>
+        </div>
+        <div>
+          <h1>Gapir</h1>
+          <p>Oʻzbekcha gapiring, matn kursor turgan joyga yoziladi.</p>
+        </div>
       </header>
 
       <section id="setup" hidden>
         <ol class="steps">
-          <li class="step" id="step-mic">
+          <li class="step card" id="step-mic">
             <span class="marker">1</span>
             <div class="step-body">
-              <div class="step-row">
-                <h3>Mikrofon</h3>
-                <button class="action" id="mic-action">Ruxsat berish</button>
-              </div>
+              <h3>Mikrofon</h3>
               <p>Ovozingiz shu kompyuterda matnga oʻgiriladi va hech qayerga yuborilmaydi.</p>
             </div>
+            <button class="action" id="mic-action">Ruxsat berish</button>
           </li>
-          <li class="step mac-only" id="step-access">
+          <li class="step card mac-only" id="step-access">
             <span class="marker">2</span>
             <div class="step-body">
-              <div class="step-row">
-                <h3>Accessibility</h3>
-                <button class="action" id="access-action">Ruxsat berish</button>
-              </div>
+              <h3>Accessibility</h3>
               <p>Ochilgan oynadagi Gapir belgisini roʻyxatga sudrang. Bu tugmalarni eshitish va matnni yozish uchun kerak.</p>
             </div>
+            <button class="action" id="access-action">Ruxsat berish</button>
           </li>
-          <li class="step" id="step-model">
+          <li class="step card" id="step-model">
             <span class="marker">3</span>
             <div class="step-body">
-              <div class="step-row">
-                <h3>Nutq modeli</h3>
-                <button class="action" id="model-action">Yuklab olish</button>
-              </div>
+              <h3>Nutq modeli</h3>
               <p id="model-text">Bir marta yuklanadi, keyin internetsiz ishlaydi.</p>
               <div class="progress" id="model-progress" hidden><div></div></div>
             </div>
+            <button class="action" id="model-action">Yuklab olish</button>
           </li>
         </ol>
       </section>
 
       <section id="ready" hidden>
-        <div class="shortcuts">
-          <div class="keys" id="fn-keys"><kbd class="key hold-key">fn</kbd></div>
-          <p>1 soniya bosib turing, belgi chiqqach gapiring. Qoʻyib yuborsangiz, yozuv tugaydi.</p>
-
-          <div class="keys" id="toggle-keys"></div>
-          <p id="toggle-text">
-            Bir bosish boshlaydi, yana bosish toʻxtatadi.
-            <button class="link" id="change-hotkey">Oʻzgartirish</button>
-          </p>
-
-          <div class="keys"><kbd class="key small">esc</kbd></div>
-          <p>Yozish paytida bosilsa, aytilgan matn oʻchiriladi.</p>
+        <div class="tiles">
+          <div class="tile card hero-tile">
+            <div class="keys" id="fn-keys"><kbd class="key accent hold-key">fn</kbd></div>
+            <div>
+              <h3>Bosib turing</h3>
+              <p>1 soniya bosib turing, belgi chiqqach gapiring. Qoʻyib yuborsangiz, yozuv tugaydi.</p>
+            </div>
+          </div>
+          <div class="tile card">
+            <div class="keys" id="toggle-keys"></div>
+            <h3>Yoqish va toʻxtatish</h3>
+            <p id="toggle-text">Bir bosish boshlaydi, yana bosish toʻxtatadi. <button class="link" id="change-hotkey">Oʻzgartirish</button></p>
+          </div>
+          <div class="tile card">
+            <div class="keys"><kbd class="key">esc</kbd></div>
+            <h3>Bekor qilish</h3>
+            <p>Yozish paytida bosilsa, aytilgan matn oʻchiriladi.</p>
+          </div>
         </div>
 
-        <label class="field" for="try">Sinab koʻring</label>
-        <textarea id="try" placeholder="Kursorni shu yerga qoʻying, fn ni 1 soniya bosib turing va gapiring"></textarea>
+        <label class="field" for="try">
+          <svg class="icon" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><path d="M12 19v3" /></svg>
+          <textarea id="try" placeholder="Kursorni shu yerga qoʻying, fn ni 1 soniya bosib turing va gapiring"></textarea>
+        </label>
 
         <h2>Sozlamalar</h2>
-        <div class="row">
-          <label for="mic">Mikrofon</label>
-          <select id="mic"></select>
+        <div class="card settings">
+          <div class="row">
+            <span class="badge" style="--tint: #2dd4bf"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><path d="M12 19v3" /></svg></span>
+            <label for="mic">Mikrofon</label>
+            <select id="mic"></select>
+          </div>
+          <div class="row">
+            <span class="badge" style="--tint: #a78bfa"><svg class="icon" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" /></svg></span>
+            <label for="fn-enabled"><span class="hold-key">fn</span> tugmasi bilan yozish</label>
+            <input class="switch" type="checkbox" role="switch" id="fn-enabled" />
+          </div>
+          <div class="row">
+            <span class="badge" style="--tint: #34d399"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2v10" /><path d="M18.4 6.6a9 9 0 1 1-12.8 0" /></svg></span>
+            <label for="autostart">Kompyuter yoqilganda ishga tushsin</label>
+            <input class="switch" type="checkbox" role="switch" id="autostart" />
+          </div>
+          <div class="row">
+            <span class="badge" style="--tint: #fbbf24"><svg class="icon" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4Z" /><path d="M16 9a5 5 0 0 1 0 6" /><path d="M19.4 5.6a9 9 0 0 1 0 12.8" /></svg></span>
+            <label for="sounds">Yozuv boshlanish va tugash ovozi</label>
+            <input class="switch" type="checkbox" role="switch" id="sounds" />
+          </div>
+          <div class="row">
+            <span class="badge" style="--tint: #38bdf8"><svg class="icon" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15.7-6L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-15.7 6L3 16" /><path d="M8 16H3v5" /></svg></span>
+            <label for="update-check">Yangi versiyani tekshirish</label>
+            <input class="switch" type="checkbox" role="switch" id="update-check" />
+          </div>
+          <div class="row">
+            <span class="badge" style="--tint: #f472b6"><svg class="icon" viewBox="0 0 24 24"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg></span>
+            <label for="auto-send">Terminal va Claude'da matnni oʻzi yuborish</label>
+            <input class="switch" type="checkbox" role="switch" id="auto-send" />
+          </div>
         </div>
-        <div class="row">
-          <label for="fn-enabled"><span class="hold-key">fn</span> tugmasi bilan yozish</label>
-          <input class="switch" type="checkbox" role="switch" id="fn-enabled" />
-        </div>
-        <div class="row">
-          <label for="autostart">Kompyuter yoqilganda ishga tushsin</label>
-          <input class="switch" type="checkbox" role="switch" id="autostart" />
-        </div>
-        <div class="row">
-          <label for="sounds">Yozuv boshlanish va tugash ovozi</label>
-          <input class="switch" type="checkbox" role="switch" id="sounds" />
-        </div>
-        <div class="row">
-          <label for="update-check">Yangi versiyani tekshirish</label>
-          <input class="switch" type="checkbox" role="switch" id="update-check" />
-        </div>
-        <div class="row">
-          <label for="auto-send">Terminal va Claude'da matnni oʻzi yuborish</label>
-          <input class="switch" type="checkbox" role="switch" id="auto-send" />
-        </div>
-        <footer id="version"></footer>
+        <footer><span id="version"></span></footer>
       </section>
     </main>
     <script src="app.js"></script>
