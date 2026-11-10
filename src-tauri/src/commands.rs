@@ -68,6 +68,9 @@ pub fn request_permission(app: AppHandle, kind: String) {
             permissions::open_pane("accessibility");
             grant::show(&app);
         }
+        // Group and device rules need sudo, so the user runs the command in a terminal.
+        #[cfg(target_os = "linux")]
+        "accessibility" => crate::output::set_clipboard(permissions::SETUP_COMMAND),
         _ => {}
     }
 }

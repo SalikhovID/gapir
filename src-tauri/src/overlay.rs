@@ -71,8 +71,8 @@ pub fn create(app: &AppHandle) {
     }
 }
 
-/// A borderless, never-focused, always-on-top window plays the panel's part on Windows.
-#[cfg(windows)]
+/// A borderless, never-focused, always-on-top window plays the panel's part on Windows and Linux.
+#[cfg(not(target_os = "macos"))]
 pub fn create(app: &AppHandle) {
     let window =
         tauri::WebviewWindowBuilder::new(app, LABEL, WebviewUrl::App("overlay.html".into()))
@@ -141,7 +141,7 @@ fn set_visible(app: &AppHandle, visible: bool) {
     });
 }
 
-#[cfg(windows)]
+#[cfg(not(target_os = "macos"))]
 fn set_visible(app: &AppHandle, visible: bool) {
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
@@ -245,4 +245,19 @@ pub fn play_cue(_app: &AppHandle, cue: Cue) {
     };
     // SAFETY: plays a system sound asynchronously; no pointers involved.
     unsafe { MessageBeep(sound) };
+}
+
+/// Freedesktop theme sounds through PulseAudio, which recording needs anyway.
+#[cfg(target_os = "linux")]
+pub fn play_cue(_app: &AppHandle, cue: Cue) {
+    let name = match cue {
+        Cue::Start => "message",
+        Cue::Stop => "complete",
+    };
+    // A thread waits for the player, so no zombie process is left behind.
+    std::thread::spawn(move || {
+        let _ = std::process::Command::new("paplay")
+            .arg(format!("/usr/share/sounds/freedesktop/stereo/{name}.oga"))
+            .status();
+    });
 }

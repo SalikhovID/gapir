@@ -27,6 +27,28 @@ $expected = (Get-Content "$file.sha256" -Raw).Split(' ')[0]
 if ((Get-FileHash $file -Algorithm SHA256).Hash -ne $expected) { throw 'downloaded installer is damaged' }
 Start-Process $file '/S /R /ARGS --hidden'
 "#;
+/// Downloads the AppImage, checks its hash, puts it in place of the running one, closes Gapir
+/// and starts the new version hidden. Ubuntu ships wget but not always curl.
+#[cfg(target_os = "linux")]
+const INSTALL_COMMAND: &str = r#"set -eu
+get() { curl -fsSL "$1" -o "$2" || wget -qO "$2" "$1"; }
+url=https://github.com/SalikhovID/gapir/releases/latest/download/Gapir-linux-x86_64.AppImage
+new="$APPIMAGE.new"
+get "$url" "$new"
+get "$url.sha256" "$new.sha256"
+expected="$(cut -d' ' -f1 "$new.sha256")"
+rm -f "$new.sha256"
+if [ "$(sha256sum "$new" | cut -d' ' -f1)" != "$expected" ]; then
+    rm -f "$new"
+    echo 'downloaded AppImage is damaged'
+    exit 1
+fi
+chmod +x "$new"
+mv -f "$new" "$APPIMAGE"
+kill "$GAPIR_PID"
+while kill -0 "$GAPIR_PID" 2>/dev/null; do sleep 0.2; done
+exec "$APPIMAGE" --hidden >/dev/null 2>&1
+"#;
 const FIRST_CHECK: Duration = Duration::from_secs(60);
 /// 12 requests an hour, well under GitHub's anonymous limit of 60.
 const CHECK_INTERVAL: Duration = Duration::from_secs(5 * 60);
@@ -116,5 +138,20 @@ fn install_command(dir: &std::path::Path) -> std::io::Result<Command> {
         .args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-File"])
         .arg(&script)
         .creation_flags(CREATE_NO_WINDOW);
+    Ok(command)
+}
+
+#[cfg(target_os = "linux")]
+fn install_command(_dir: &std::path::Path) -> std::io::Result<Command> {
+    use std::os::unix::process::CommandExt;
+    if std::env::var_os("APPIMAGE").is_none() {
+        return Err(std::io::Error::other("only the AppImage can update itself"));
+    }
+    let mut command = Command::new("/bin/sh");
+    command
+        .args(["-c", INSTALL_COMMAND])
+        .env("GAPIR_PID", std::process::id().to_string())
+        // Its own process group, so it outlives the app it closes.
+        .process_group(0);
     Ok(command)
 }

@@ -23,11 +23,11 @@ pub enum Signal {
     UserInput,
 }
 
-/// The hold-to-talk key. PC keyboards handle `fn` in firmware, so Windows never sees it.
-const HOLD_KEY: Modifiers = if cfg!(windows) {
-    Modifiers::CTRL_RIGHT
-} else {
+/// The hold-to-talk key. PC keyboards handle `fn` in firmware, so Windows and Linux never see it.
+const HOLD_KEY: Modifiers = if cfg!(target_os = "macos") {
     Modifiers::FN
+} else {
+    Modifiers::CTRL_RIGHT
 };
 
 /// Maps the raw event stream to signals. Stateful because `fn` chords and auto-repeat
@@ -104,6 +104,9 @@ pub struct Keys {
     capture_esc: AtomicBool,
     paused: AtomicBool,
     last_input: Mutex<Option<Instant>>,
+    hold_down: AtomicBool,
+    /// Keys typed by Gapir itself until then; on Linux they reach the listener like real ones.
+    own_input_until: Mutex<Option<Instant>>,
 }
 
 impl Keys {
@@ -117,6 +120,8 @@ impl Keys {
             capture_esc: AtomicBool::new(false),
             paused: AtomicBool::new(false),
             last_input: Mutex::new(None),
+            hold_down: AtomicBool::new(false),
+            own_input_until: Mutex::new(None),
         });
         keys.refresh_blocking();
         keys
@@ -164,6 +169,16 @@ impl Keys {
             .is_some_and(|last| last >= since)
     }
 
+    #[cfg(target_os = "linux")]
+    pub fn hold_key_down(&self) -> bool {
+        self.hold_down.load(Ordering::SeqCst)
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn ignore_input_until(&self, until: Instant) {
+        *self.own_input_until.lock().expect("own input lock") = Some(until);
+    }
+
     fn handle(&self, classifier: &mut Classifier, event: &KeyEvent, input: &Sender<Input>) {
         if self.paused.load(Ordering::SeqCst) {
             return;
@@ -173,10 +188,22 @@ impl Keys {
             match signal {
                 Signal::Machine(event) => {
                     log::info!("key: {event:?}");
+                    if matches!(event, Event::FnDown | Event::FnUp) {
+                        self.hold_down
+                            .store(event == Event::FnDown, Ordering::SeqCst);
+                    }
                     let _ = input.send(Input::Key(event));
                 }
                 Signal::UserInput => {
-                    *self.last_input.lock().expect("last input lock") = Some(Instant::now());
+                    let now = Instant::now();
+                    let ours = self
+                        .own_input_until
+                        .lock()
+                        .expect("own input lock")
+                        .is_some_and(|until| now < until);
+                    if !ours {
+                        *self.last_input.lock().expect("last input lock") = Some(now);
+                    }
                 }
             }
         }
@@ -401,5 +428,33 @@ mod tests {
     fn broken_hotkey_text_falls_back_to_the_default() {
         let default: Hotkey = Settings::default().toggle_hotkey.parse().unwrap();
         assert_eq!(parse_toggle("not a hotkey"), default);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn own_keys_are_not_user_input_and_the_hold_key_is_tracked() {
+        let keys = Keys::new(&Settings::default());
+        let (input, _receiver) = std::sync::mpsc::channel();
+        let mut classifier = Classifier::default();
+        let start = Instant::now();
+        keys.ignore_input_until(start + Duration::from_secs(60));
+        keys.handle(
+            &mut classifier,
+            &key(Modifiers::empty(), Key::A, true),
+            &input,
+        );
+        assert!(!keys.user_typed_since(start));
+        keys.ignore_input_until(start);
+        keys.handle(
+            &mut classifier,
+            &key(Modifiers::empty(), Key::A, true),
+            &input,
+        );
+        assert!(keys.user_typed_since(start));
+
+        keys.handle(&mut classifier, &fn_key(true), &input);
+        assert!(keys.hold_key_down());
+        keys.handle(&mut classifier, &fn_key(false), &input);
+        assert!(!keys.hold_key_down());
     }
 }

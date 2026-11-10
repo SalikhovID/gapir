@@ -7,9 +7,11 @@ mod grant;
 mod hotkeys;
 mod lifecycle;
 #[cfg_attr(windows, path = "output_windows.rs")]
+#[cfg_attr(target_os = "linux", path = "output_linux.rs")]
 mod output;
 mod overlay;
 #[cfg_attr(windows, path = "permissions_windows.rs")]
+#[cfg_attr(target_os = "linux", path = "permissions_linux.rs")]
 mod permissions;
 mod recorder;
 mod stt;
@@ -128,7 +130,9 @@ fn on_model_broken(app: &AppHandle, shared: &Shared) {
 fn log_folder() -> PathBuf {
     #[cfg(windows)]
     let (base, logs) = ("LOCALAPPDATA", "Gapir/logs");
-    #[cfg(not(windows))]
+    #[cfg(target_os = "linux")]
+    let (base, logs) = ("HOME", ".local/share/Gapir/logs");
+    #[cfg(target_os = "macos")]
     let (base, logs) = ("HOME", "Library/Logs/Gapir");
     std::env::var_os(base)
         .map(PathBuf::from)

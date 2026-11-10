@@ -3,13 +3,23 @@ const { listen } = window.__TAURI__.event;
 
 const $ = (id) => document.getElementById(id);
 const WINDOWS = navigator.userAgent.includes("Windows");
-const SYMBOLS = WINDOWS ? { Cmd: "Win" } : { Cmd: "⌘", Shift: "⇧", Alt: "⌥", Ctrl: "⌃" };
+const LINUX = navigator.userAgent.includes("Linux");
+const SYMBOLS = WINDOWS ? { Cmd: "Win" } : LINUX ? { Cmd: "Super" } : { Cmd: "⌘", Shift: "⇧", Alt: "⌥", Ctrl: "⌃" };
 
-// Windows has no fn key (right Ctrl stands in) and no Accessibility grant.
-if (WINDOWS) {
-  document.querySelectorAll(".mac-only").forEach((element) => (element.style.display = "none"));
+// Windows and Linux have no fn key (right Ctrl stands in), and Windows has no Accessibility grant.
+if (WINDOWS || LINUX) {
   $("try").placeholder = "Kursorni shu yerga qoʻying, oʻng Ctrl ni 1 soniya bosib turing va gapiring";
   document.querySelectorAll(".hold-key").forEach((element) => (element.textContent = "oʻng Ctrl"));
+}
+if (WINDOWS) {
+  document.querySelectorAll(".mac-only").forEach((element) => (element.style.display = "none"));
+}
+// Linux needs keyboard device access once: a terminal command, then a new login.
+if (LINUX) {
+  $("step-access").querySelector("h3").textContent = "Klaviatura ruxsati";
+  $("step-access").querySelector("p").textContent =
+    "Buyruqni nusxalang, terminalda ishga tushiring, keyin tizimdan chiqib qayta kiring. Bu tugmalarni eshitish va matnni yozish uchun kerak.";
+  $("access-action").textContent = "Buyruqni nusxalash";
 }
 
 let status = null;
