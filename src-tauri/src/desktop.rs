@@ -4,7 +4,7 @@ use crate::hotkeys::Keys;
 use crate::output::SystemOutput;
 use crate::recorder::Mic;
 use crate::stt::Stt;
-use crate::{lifecycle, overlay, Shared};
+use crate::{Shared, lifecycle, overlay};
 use gapir_core::delivery::Output;
 use gapir_core::engine::{Cue, Notice, Platform, View};
 use std::sync::Arc;

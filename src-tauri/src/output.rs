@@ -8,7 +8,7 @@ use objc2_core_foundation::{CFEqual, CFRetained, CFString, CFType};
 use objc2_core_graphics::{
     CGEvent, CGEventFlags, CGEventSource, CGEventSourceStateID, CGEventTapLocation, CGEventType,
 };
-use std::ptr::{null, NonNull};
+use std::ptr::{NonNull, null};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -31,7 +31,7 @@ const SEND_APPS: &[&str] = &[
 ];
 
 #[link(name = "Carbon", kind = "framework")]
-extern "C" {
+unsafe extern "C" {
     fn IsSecureEventInputEnabled() -> bool;
 }
 

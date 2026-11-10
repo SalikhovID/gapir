@@ -12,7 +12,7 @@ use std::time::Duration;
 use tauri::{AppHandle, Emitter, LogicalPosition, Manager, WebviewUrl};
 #[cfg(target_os = "macos")]
 use tauri_nspanel::{
-    tauri_panel, CollectionBehavior, ManagerExt, PanelBuilder, PanelLevel, StyleMask,
+    CollectionBehavior, ManagerExt, PanelBuilder, PanelLevel, StyleMask, tauri_panel,
 };
 
 #[cfg(target_os = "macos")]

@@ -13,10 +13,10 @@ const BUILT_IN_MARKER: &str = "BuiltIn";
 /// Chooses the device to open. `None` means the system default. With no explicit choice the
 /// built-in microphone wins, because Bluetooth input degrades both audio and start-up time.
 pub fn pick_device(setting: Option<&str>, device_ids: &[String]) -> Option<String> {
-    if let Some(wanted) = setting {
-        if device_ids.iter().any(|id| id == wanted) {
-            return Some(wanted.to_string());
-        }
+    if let Some(wanted) = setting
+        && device_ids.iter().any(|id| id == wanted)
+    {
+        return Some(wanted.to_string());
     }
     device_ids
         .iter()

@@ -55,13 +55,12 @@ pub fn spawn(app: AppHandle, enabled: impl Fn() -> bool + Send + 'static) {
         .spawn(move || {
             std::thread::sleep(FIRST_CHECK);
             loop {
-                if enabled() {
-                    if let Some(tag) = latest_tag() {
-                        if is_newer(env!("CARGO_PKG_VERSION"), &tag) {
-                            log::info!("update available: {tag}");
-                            lifecycle::set_update_available(&app, &tag);
-                        }
-                    }
+                if enabled()
+                    && let Some(tag) = latest_tag()
+                    && is_newer(env!("CARGO_PKG_VERSION"), &tag)
+                {
+                    log::info!("update available: {tag}");
+                    lifecycle::set_update_available(&app, &tag);
                 }
                 std::thread::sleep(CHECK_INTERVAL);
             }

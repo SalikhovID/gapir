@@ -294,9 +294,10 @@ mod tests {
             vec![Signal::Machine(Event::ToggleHotkey)]
         );
         assert!(c.classify(&down, &config()).is_empty());
-        assert!(c
-            .classify(&key(cmd_shift(), Key::G, false), &config())
-            .is_empty());
+        assert!(
+            c.classify(&key(cmd_shift(), Key::G, false), &config())
+                .is_empty()
+        );
         assert_eq!(
             c.classify(&down, &config()),
             vec![Signal::Machine(Event::ToggleHotkey)]
@@ -364,9 +365,10 @@ mod tests {
     #[test]
     fn key_releases_are_ignored() {
         let mut c = Classifier::default();
-        assert!(c
-            .classify(&key(Modifiers::empty(), Key::A, false), &config())
-            .is_empty());
+        assert!(
+            c.classify(&key(Modifiers::empty(), Key::A, false), &config())
+                .is_empty()
+        );
     }
 
     fn blocked(keys: &Keys) -> HashSet<Hotkey> {
@@ -377,9 +379,11 @@ mod tests {
     fn fn_always_reaches_macos_so_its_layout_switcher_keeps_working() {
         let keys = Keys::new(&Settings::default());
         keys.capture_esc(true);
-        assert!(blocked(&keys)
-            .iter()
-            .all(|hotkey| !hotkey.modifiers.contains(Modifiers::FN)));
+        assert!(
+            blocked(&keys)
+                .iter()
+                .all(|hotkey| !hotkey.modifiers.contains(Modifiers::FN))
+        );
     }
 
     #[test]

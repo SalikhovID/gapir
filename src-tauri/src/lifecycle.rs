@@ -1,6 +1,6 @@
 //! Keeps the app alive in the background: menu bar item, main window, and the Cmd+Q override.
 
-use crate::{updater, Shared};
+use crate::{Shared, updater};
 use gapir_core::engine::View;
 use std::sync::{Arc, Mutex};
 use tauri::image::Image;
@@ -8,9 +8,9 @@ use tauri::image::Image;
 use tauri::menu::{Menu, PredefinedMenuItem, SubmenuBuilder};
 use tauri::menu::{MenuBuilder, MenuEvent, MenuItem, MenuItemBuilder};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
-use tauri::{include_image, AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 #[cfg(target_os = "macos")]
 use tauri::{ActivationPolicy, TitleBarStyle, Window, WindowEvent};
+use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, include_image};
 
 const MAIN: &str = "main";
 

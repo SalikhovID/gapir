@@ -6,7 +6,7 @@ use crate::{lifecycle, permissions};
 use block2::RcBlock;
 use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, NSObjectProtocol, ProtocolObject};
-use objc2::{define_class, msg_send, AllocAnyThread, MainThreadMarker, MainThreadOnly};
+use objc2::{AllocAnyThread, MainThreadMarker, MainThreadOnly, define_class, msg_send};
 use objc2_app_kit::{
     NSAnimatablePropertyContainer, NSAnimationContext, NSApplication, NSBackingStoreType, NSColor,
     NSControl, NSDragOperation, NSDraggingContext, NSDraggingItem, NSDraggingSession,
@@ -15,11 +15,11 @@ use objc2_app_kit::{
     NSWindowTitleVisibility, NSWorkspace,
 };
 use objc2_application_services::AXUIElement;
-use objc2_core_foundation::{kCFBooleanTrue, CFArray, CFString};
+use objc2_core_foundation::{CFArray, CFString, kCFBooleanTrue};
 use objc2_core_graphics::{CGWindowListCopyWindowInfo, CGWindowListOption};
 use objc2_foundation::{
-    ns_string, NSArray, NSBundle, NSDictionary, NSNumber, NSObject, NSPoint, NSRect, NSSize,
-    NSString, NSURL,
+    NSArray, NSBundle, NSDictionary, NSNumber, NSObject, NSPoint, NSRect, NSSize, NSString, NSURL,
+    ns_string,
 };
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
