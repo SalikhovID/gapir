@@ -13,7 +13,9 @@ pub struct Settings {
     pub mic_device: Option<String>,
     pub autostart: bool,
     pub sounds: bool,
-    pub update_check: bool,
+    /// Install new releases on their own. Off: the tray menu still offers them.
+    #[serde(alias = "update_check")]
+    pub auto_update: bool,
     /// Press Return after dictation in terminals and Claude, so the prompt is sent.
     pub auto_send: bool,
 }
@@ -32,7 +34,7 @@ impl Default for Settings {
             mic_device: None,
             autostart: true,
             sounds: false,
-            update_check: true,
+            auto_update: true,
             auto_send: false,
         }
     }
@@ -115,5 +117,12 @@ mod tests {
         Settings::default().save(&path).unwrap();
         let names: Vec<_> = std::fs::read_dir(dir.path()).unwrap().collect();
         assert_eq!(names.len(), 1);
+    }
+
+    #[test]
+    fn old_update_check_off_keeps_auto_update_off() {
+        let (_dir, path) = path();
+        std::fs::write(&path, r#"{"update_check": false}"#).unwrap();
+        assert!(!Settings::load(&path).auto_update);
     }
 }

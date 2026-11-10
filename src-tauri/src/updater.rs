@@ -1,5 +1,5 @@
-//! Checks GitHub for a newer release every few minutes and installs it in the background while
-//! Gapir is idle. The check is one anonymous GET; the install runs the official installer.
+//! Checks GitHub for a newer release every few minutes. With auto-update on it installs it in the
+//! background while Gapir is idle; otherwise the tray menu offers it. The check is one anonymous GET.
 
 use crate::{Shared, lifecycle};
 use gapir_core::version::is_newer;
@@ -79,14 +79,16 @@ pub fn spawn(app: AppHandle, shared: Arc<Shared>) {
             // One attempt per release, so a failing install does not repeat every few minutes.
             let mut attempted: Option<String> = None;
             loop {
-                if shared.settings().update_check
-                    && let Some(tag) = latest_tag()
+                if let Some(tag) = latest_tag()
                     && is_newer(env!("CARGO_PKG_VERSION"), &tag)
                 {
                     lifecycle::set_update_available(&app, &tag);
                     let idle = !shared.busy.load(Ordering::Relaxed)
                         && !shared.downloading.load(Ordering::Relaxed);
-                    if idle && attempted.as_deref() != Some(tag.as_str()) {
+                    if shared.settings().auto_update
+                        && idle
+                        && attempted.as_deref() != Some(tag.as_str())
+                    {
                         log::info!("installing update {tag}");
                         run_update(&app);
                         attempted = Some(tag);

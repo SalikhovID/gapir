@@ -66,7 +66,7 @@ Gapir fonda ishlaydi va menu bar'da turadi. `⌘Q` faqat oynani yopadi. Butunlay
 
 ## Yangilash
 
-Gapir har 5 daqiqada GitHub'dan oxirgi versiya raqamini soʻraydi, boshqa hech narsa yuborilmaydi. Yangi versiya chiqsa va siz gapirmayotgan boʻlsangiz, Gapir uni fonda yuklaydi, hash'ini tekshiradi, oʻrnatadi va oynasiz qayta ochiladi. Buni sozlamadagi **Avtomatik yangilash** bilan oʻchirish mumkin.
+Gapir har 5 daqiqada GitHub'dan oxirgi versiya raqamini soʻraydi, boshqa hech narsa yuborilmaydi. Yangi versiya chiqsa va siz gapirmayotgan boʻlsangiz, Gapir uni fonda yuklaydi, hash'ini tekshiradi, oʻrnatadi va oynasiz qayta ochiladi. Sozlamadagi **Avtomatik yangilash** oʻchirilsa, yangi versiya faqat menu bar menyusida **Yangilash** boʻlib chiqadi va uni bosganingizda oʻrnatiladi.
 
 ## Oʻchirish
 
