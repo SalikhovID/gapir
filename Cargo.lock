@@ -1381,7 +1381,7 @@ dependencies = [
 
 [[package]]
 name = "gapir"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "arboard",
  "block2",
@@ -1414,7 +1414,7 @@ dependencies = [
 
 [[package]]
 name = "gapir-core"
-version = "0.1.9"
+version = "0.1.10"
 dependencies = [
  "earshot",
  "serde",
