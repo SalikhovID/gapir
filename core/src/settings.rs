@@ -22,11 +22,11 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             fn_enabled: true,
-            // Windows reserves most Win-key chords for the shell.
-            toggle_hotkey: if cfg!(windows) {
-                "Ctrl+Shift+G"
-            } else {
+            // Windows and Linux desktops reserve most Win/Super chords for the shell.
+            toggle_hotkey: if cfg!(target_os = "macos") {
                 "Cmd+Shift+G"
+            } else {
+                "Ctrl+Shift+G"
             }
             .into(),
             mic_device: None,

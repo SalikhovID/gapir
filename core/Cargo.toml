@@ -1,7 +1,7 @@
 [package]
 name = "gapir-core"
 version = "0.1.7"
-edition = "2021"
+edition = "2024"
 license = "MIT"
 description = "Platform-independent logic of Gapir: state machine, chunking, text cleanup, delivery."
 

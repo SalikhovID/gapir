@@ -1,6 +1,6 @@
 //! Keeps the app alive in the background: menu bar item, main window, and the Cmd+Q override.
 
-use crate::{updater, Shared};
+use crate::{Shared, updater};
 use gapir_core::engine::View;
 use std::sync::{Arc, Mutex};
 use tauri::image::Image;
@@ -8,9 +8,9 @@ use tauri::image::Image;
 use tauri::menu::{Menu, PredefinedMenuItem, SubmenuBuilder};
 use tauri::menu::{MenuBuilder, MenuEvent, MenuItem, MenuItemBuilder};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
-use tauri::{include_image, AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder};
 #[cfg(target_os = "macos")]
 use tauri::{ActivationPolicy, TitleBarStyle, Window, WindowEvent};
+use tauri::{AppHandle, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, include_image};
 
 const MAIN: &str = "main";
 
@@ -19,10 +19,10 @@ const ICON_IDLE: Image<'static> = include_image!("icons/tray-idle.png");
 const ICON_RECORDING: Image<'static> = include_image!("icons/tray-recording.png");
 #[cfg(target_os = "macos")]
 const ICON_BUSY: Image<'static> = include_image!("icons/tray-busy.png");
-// The black template icons vanish on the dark Windows taskbar.
-#[cfg(windows)]
+// The black template icons vanish on dark Windows taskbars and Linux panels.
+#[cfg(not(target_os = "macos"))]
 const ICON_IDLE: Image<'static> = include_image!("icons/32x32.png");
-#[cfg(windows)]
+#[cfg(not(target_os = "macos"))]
 const ICON_BUSY: Image<'static> = ICON_IDLE;
 
 /// Handles of the tray menu entries that change at runtime.

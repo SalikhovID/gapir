@@ -3,7 +3,7 @@
 
 use crate::chunker::{Chunker, Config, Vad};
 use crate::delivery::{CancelOutcome, Delivery, Output};
-use crate::machine::{self, Action, Event, Message, State, FN_HOLD_DELAY};
+use crate::machine::{self, Action, Event, FN_HOLD_DELAY, Message, State};
 use std::time::{Duration, Instant};
 
 /// Toggle recording stops itself after this much silence.

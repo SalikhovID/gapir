@@ -1,6 +1,6 @@
 # Gapir
 
-Mac va Windows uchun oʻzbekcha ovozli yozuv. Istalgan matn maydonida `fn` tugmasini 1 soniya bosib turing va gapiring, aytganingiz kursor turgan joyga yoziladi. Ovoz shu kompyuterda matnga oʻgiriladi va hech qayerga yuborilmaydi.
+Mac, Windows va Linux uchun oʻzbekcha ovozli yozuv. Istalgan matn maydonida `fn` tugmasini 1 soniya bosib turing va gapiring, aytganingiz kursor turgan joyga yoziladi. Ovoz shu kompyuterda matnga oʻgiriladi va hech qayerga yuborilmaydi.
 
 ## Oʻrnatish
 
@@ -24,6 +24,22 @@ Apple Silicon (M1 va undan yangi) va macOS 13 yoki undan yangisi kerak.
 [Oxirgi release](https://github.com/SalikhovID/gapir/releases/latest)dan `Gapir-windows-x64-setup.exe` ni yuklab, ishga tushiring. Installer imzolanmagan, shuning uchun SmartScreen ogohlantiradi: **More info** → **Run anyway**. Model birinchi ochilishda ilovaning oʻzida yuklanadi.
 
 Windows'da `fn` oʻrniga **oʻng Ctrl** ishlaydi, `⌘⇧G` oʻrniga `Ctrl+Shift+G`. Windows 10 yoki 11 (x64) kerak. Nutq Vulkan orqali videokartada matnga oʻgiriladi (NVIDIA, AMD, Intel). Vulkan boʻlmasa, Gapir CPU'da ishlaydi, lekin sekinroq.
+
+### Linux
+
+[Oxirgi release](https://github.com/SalikhovID/gapir/releases/latest)dan `Gapir-linux-x86_64.AppImage` ni yuklab, ishga tushiring:
+
+```bash
+chmod +x Gapir-linux-x86_64.AppImage && ./Gapir-linux-x86_64.AppImage
+```
+
+Gapir tugmalarni eshitish va matnni yozish uchun klaviatura qurilmalariga kirishi kerak. Buni bir marta sozlaysiz: ilova oynasidagi **Buyruqni nusxalash** tugmasi shu buyruqni nusxalaydi, uni terminalda ishga tushiring va tizimdan chiqib qayta kiring:
+
+```bash
+echo 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' | sudo tee /etc/udev/rules.d/60-gapir.rules && sudo modprobe uinput && sudo udevadm control --reload && sudo udevadm trigger && sudo usermod -aG input $USER
+```
+
+Linux'da ham `fn` oʻrniga **oʻng Ctrl**, `⌘⇧G` oʻrniga `Ctrl+Shift+G` ishlaydi. Model birinchi ochilishda ilovaning oʻzida yuklanadi. Matn clipboard orqali `Shift+Insert` bilan qoʻyiladi, shuning uchun clipboard'da oxirgi boʻlak qoladi. Oʻng Ctrl bosib turilganda matn qoʻyib yuborganingizdan keyin tushadi. X11 va Wayland ishlaydi, x86_64 va PulseAudio yoki PipeWire kerak. Nutq CPU'da matnga oʻgiriladi.
 
 ## Ishlatish
 
@@ -50,7 +66,7 @@ Gapir fonda ishlaydi va menu bar'da turadi. `⌘Q` faqat oynani yopadi. Butunlay
 
 ## Yangilash
 
-Yangi versiya chiqsa, menu bar menyusida **Yangilash** paydo boʻladi. Windows'da u installer'ni yuklab, hash'ini tekshiradi va Gapir'ni yangilab qayta ochadi. Buning uchun Gapir kuniga bir marta GitHub'dan versiya raqamini soʻraydi, boshqa hech narsa yuborilmaydi. Tekshiruvni sozlamada oʻchirish mumkin.
+Gapir har 5 daqiqada GitHub'dan oxirgi versiya raqamini soʻraydi, boshqa hech narsa yuborilmaydi. Yangi versiya chiqsa va siz gapirmayotgan boʻlsangiz, Gapir uni fonda yuklaydi, hash'ini tekshiradi, oʻrnatadi va oynasiz qayta ochiladi. Buni sozlamadagi **Avtomatik yangilash** bilan oʻchirish mumkin.
 
 ## Oʻchirish
 
@@ -69,9 +85,9 @@ cargo test --workspace
 npx @tauri-apps/cli@2 build --bundles app
 ```
 
-Build uchun Rust, CMake, Node va Command Line Tools kerak, Windows'da Visual Studio Build Tools va [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows). Windows installer: `npx @tauri-apps/cli@2 build --bundles nsis`. Linux hali yoʻq.
+Build uchun Rust, CMake, Node va Command Line Tools kerak, Windows'da Visual Studio Build Tools va [Vulkan SDK](https://vulkan.lunarg.com/sdk/home#windows). Windows installer: `npx @tauri-apps/cli@2 build --bundles nsis`. Linux'da [CI](.github/workflows/ci.yml)dagi `LINUX_PACKAGES` kerak, AppImage: `npx @tauri-apps/cli@2 build --bundles appimage`.
 
-Release avtomatik chiqadi. `main`ga har bir push yoki merge [CI](.github/workflows/ci.yml)ni ishga tushiradi: u fmt, clippy va testlarni macOS va Windows'da tekshiradi, patch versiyani bittaga oshiradi (`chore: release` commit va `vX.Y.Z` tegi), ilovani [`scripts/package.sh`](scripts/package.sh) bilan quradi, imzolaydi, Windows installer'ni ham quradi va ikkalasini bitta GitHub release qilib yuklaydi. Release kerak boʻlmasa, commit xabariga `[skip ci]` yozing. Minor yoki major versiya uchun `scripts/set-version.sh 0.2.0` ni ishga tushirib, oʻzgarishni commit qiling: CI aynan shu versiyani chiqaradi. CI ishlamay qolsa, release qoʻlda ham chiqadi: `scripts/package.sh` zip yasaydi (`MACOS_CERT_P12` va `MACOS_CERT_PASSWORD` kerak), keyin `gh release create` bilan yuklanadi.
+Release avtomatik chiqadi. `main`ga har bir push yoki merge [CI](.github/workflows/ci.yml)ni ishga tushiradi: u fmt, clippy va testlarni macOS, Windows va Linux'da tekshiradi, patch versiyani bittaga oshiradi (`chore: release` commit va `vX.Y.Z` tegi), ilovani [`scripts/package.sh`](scripts/package.sh) bilan quradi, imzolaydi, Windows installer'ni va Linux AppImage'ni ham quradi va hammasini bitta GitHub release qilib yuklaydi. Release kerak boʻlmasa, commit xabariga `[skip ci]` yozing. Minor yoki major versiya uchun `scripts/set-version.sh 0.2.0` ni ishga tushirib, oʻzgarishni commit qiling: CI aynan shu versiyani chiqaradi. CI ishlamay qolsa, release qoʻlda ham chiqadi: `scripts/package.sh` zip yasaydi (`MACOS_CERT_P12` va `MACOS_CERT_PASSWORD` kerak), keyin `gh release create` bilan yuklanadi.
 
 Model [`scripts/convert-model.py`](scripts/convert-model.py) bilan asl fayldan olinadi, aniq versiyalari [model release](https://github.com/SalikhovID/gapir/releases/tag/model-rubaistt-v2-q5km) izohida yozilgan.
 

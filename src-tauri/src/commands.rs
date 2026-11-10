@@ -3,13 +3,13 @@
 #[cfg(target_os = "macos")]
 use crate::grant;
 use crate::stt::MODEL;
-use crate::{permissions, Shared};
+use crate::{Shared, permissions};
 use gapir_core::model_store;
 use gapir_core::settings::Settings;
 use serde::Serialize;
 use serde_json::json;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter, State};
 use tauri_plugin_autostart::ManagerExt;
@@ -68,6 +68,9 @@ pub fn request_permission(app: AppHandle, kind: String) {
             permissions::open_pane("accessibility");
             grant::show(&app);
         }
+        // Group and device rules need sudo, so the user runs the command in a terminal.
+        #[cfg(target_os = "linux")]
+        "accessibility" => crate::output::set_clipboard(permissions::SETUP_COMMAND),
         _ => {}
     }
 }
