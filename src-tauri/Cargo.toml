@@ -1,6 +1,6 @@
 [package]
 name = "gapir"
-version = "0.1.10"
+version = "0.1.11"
 edition = "2024"
 license = "MIT"
 description = "Offline Uzbek voice typing for any text field"
