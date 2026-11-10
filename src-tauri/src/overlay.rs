@@ -87,11 +87,8 @@ pub fn create(app: &AppHandle) {
             .focusable(false)
             .visible(false)
             .build();
-    match window {
-        Ok(window) => {
-            let _ = window.set_ignore_cursor_events(true);
-        }
-        Err(error) => log::error!("overlay could not be created: {error}"),
+    if let Err(error) = window {
+        log::error!("overlay could not be created: {error}");
     }
 }
 
@@ -143,6 +140,11 @@ fn set_visible(app: &AppHandle, visible: bool) {
 
 #[cfg(not(target_os = "macos"))]
 fn set_visible(app: &AppHandle, visible: bool) {
+    // Wayland compositors ignore `focusable(false)`: the shown pill takes focus and the paste lands
+    // in it. shortcut: no pill on Wayland, upgrade with a layer-shell surface.
+    if visible && cfg!(target_os = "linux") && std::env::var_os("WAYLAND_DISPLAY").is_some() {
+        return;
+    }
     let handle = app.clone();
     let _ = app.run_on_main_thread(move || {
         let Some(window) = handle.get_webview_window(LABEL) else {
@@ -151,6 +153,8 @@ fn set_visible(app: &AppHandle, visible: bool) {
         if visible {
             place(&handle);
             let _ = window.show();
+            // Only a shown window has a GDK window to clip; before that GTK has none and tao panics.
+            let _ = window.set_ignore_cursor_events(true);
         } else {
             let _ = window.hide();
         }
