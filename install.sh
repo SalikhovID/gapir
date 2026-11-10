@@ -101,6 +101,10 @@ main() {
     check_system
     install_app
     install_model
+    if [ "${GAPIR_UPDATE:-}" = 1 ]; then
+        open "$APP_PATH" --args --hidden
+        return
+    fi
     open "$APP_PATH"
     cat <<MESSAGE
 

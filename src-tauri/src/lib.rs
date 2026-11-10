@@ -18,12 +18,13 @@ mod updater;
 use desktop::Desktop;
 use gapir_core::chunker::EarshotVad;
 use gapir_core::engine::{Engine, Input};
+use gapir_core::machine::State;
 use gapir_core::model_store;
 use gapir_core::settings::Settings;
 use hotkeys::Keys;
 use recorder::Mic;
 use std::path::PathBuf;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -44,6 +45,8 @@ pub struct Shared {
     pub last_text: Mutex<String>,
     pub keys: Arc<Keys>,
     pub downloading: AtomicBool,
+    /// Recording or still transcribing; an update must not restart the app then.
+    pub busy: AtomicBool,
 }
 
 impl Shared {
@@ -76,6 +79,7 @@ fn spawn_engine(
             });
             // The first load after a reboot is slow. Doing it now spares the first dictation.
             stt.prepare();
+            let engine_shared = shared.clone();
             let platform = Desktop::new(app.clone(), shared, mic, stt);
             let mut engine = Engine::new(platform, EarshotVad::new);
             let mut last_tick = Instant::now();
@@ -105,6 +109,8 @@ fn spawn_engine(
                     last_tick = Instant::now();
                     engine.handle(Input::Tick, last_tick);
                 }
+                let busy = engine.state() != State::Idle;
+                engine_shared.busy.store(busy, Ordering::Relaxed);
             }
         })
         .expect("failed to start the engine thread");
@@ -182,6 +188,7 @@ pub fn run() {
                 last_text: Mutex::new(String::new()),
                 keys: keys.clone(),
                 downloading: AtomicBool::new(false),
+                busy: AtomicBool::new(false),
             });
             app.manage(shared.clone());
 
@@ -198,10 +205,7 @@ pub fn run() {
             });
             spawn_engine(handle.clone(), shared.clone(), input, receiver);
 
-            let update_shared = shared.clone();
-            updater::spawn(handle.clone(), move || {
-                update_shared.settings().update_check
-            });
+            updater::spawn(handle.clone(), shared.clone());
 
             let setup_done = permissions::accessibility()
                 && permissions::mic_status() == "granted"
