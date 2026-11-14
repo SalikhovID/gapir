@@ -21,12 +21,7 @@ fn stage_speech_modules() {
     let source =
         std::env::var("DEP_TRANSCRIBE_RUNTIME_DIR").expect("transcribe-cpp-sys is built shared");
     println!("cargo:rustc-link-arg=-Wl,-rpath,{source}");
-    let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"));
-    let staged = out_dir
-        .ancestors()
-        .nth(3)
-        .expect("OUT_DIR is inside the profile dir")
-        .join("speech-backends");
+    let staged = profile_dir().join("speech-backends");
     let _ = std::fs::remove_dir_all(&staged);
     std::fs::create_dir_all(&staged).expect("create speech-backends");
     // The modules find libggml-base.so.0 through $ORIGIN, also when linuxdeploy checks them.
@@ -49,15 +44,11 @@ fn stage_speech_modules() {
 
 /// transcribe-cpp-sys puts its DLLs next to the binaries only when its own build script runs. A
 /// cached build (CI) skips it and the tests fail with STATUS_DLL_NOT_FOUND, so copy them each time.
+/// Since Rust 1.100 test binaries live under `<profile>/build`, so CI puts the profile on PATH.
 fn copy_speech_dlls() {
     let source =
         std::env::var("DEP_TRANSCRIBE_RUNTIME_DIR").expect("transcribe-cpp-sys is built shared");
-    let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"));
-    // OUT_DIR is <profile>/build/<crate>-<hash>/out.
-    let profile = out_dir
-        .ancestors()
-        .nth(3)
-        .expect("OUT_DIR is inside the profile dir");
+    let profile = profile_dir();
     let dlls: Vec<_> = std::fs::read_dir(&source)
         .unwrap_or_else(|error| panic!("{source}: {error}"))
         .flatten()
@@ -65,12 +56,24 @@ fn copy_speech_dlls() {
         .filter(|path| path.extension().is_some_and(|ext| ext == "dll"))
         .collect();
     assert!(!dlls.is_empty(), "no DLLs in {source}");
-    for dir in [profile.to_path_buf(), profile.join("deps")] {
+    for dir in [profile.clone(), profile.join("deps")] {
         for dll in &dlls {
             // A running gapir.exe locks its copy; that copy is already in place.
             let _ = std::fs::copy(dll, dir.join(dll.file_name().expect("file name")));
         }
     }
+}
+
+/// The folder with the final binaries. OUT_DIR is `<profile>/build/<crate>-<hash>/out`, or
+/// `<profile>/build/<crate>/<hash>/out` since Rust 1.100.
+fn profile_dir() -> std::path::PathBuf {
+    let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"));
+    out_dir
+        .ancestors()
+        .find(|dir| dir.file_name().is_some_and(|name| name == "build"))
+        .and_then(|build| build.parent())
+        .expect("OUT_DIR is inside <profile>/build")
+        .to_path_buf()
 }
 
 /// ggml-metal guards newer Metal APIs with `@available`. With a deployment target older than the

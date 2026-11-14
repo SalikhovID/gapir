@@ -50,6 +50,10 @@ jobs:
           cache-on-failure: true
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
+      # Test binaries no longer sit next to the speech DLLs that build.rs copies (Rust 1.100).
+      - name: Put the speech DLLs on PATH
+        if: runner.os == 'Windows'
+        run: Add-Content $env:GITHUB_PATH "$env:GITHUB_WORKSPACE\target\debug"
       - run: cargo test --workspace
 
   # The Windows, Linux and macOS builds use the same commit and version, so the release gets
