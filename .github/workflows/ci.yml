@@ -38,7 +38,7 @@ jobs:
         with:
           components: clippy, rustfmt
       - uses: jakoch/install-vulkan-sdk-action@v1
-        if: runner.os == 'Windows'
+        if: runner.os != 'macOS'
         with:
           vulkan_version: 1.4.363.0
           cache: true
@@ -50,9 +50,13 @@ jobs:
           cache-on-failure: true
       - run: cargo fmt --all --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
+      # Test binaries no longer sit next to the speech DLLs that build.rs copies (Rust 1.100).
+      - name: Put the speech DLLs on PATH
+        if: runner.os == 'Windows'
+        run: Add-Content $env:GITHUB_PATH "$env:GITHUB_WORKSPACE\target\debug"
       - run: cargo test --workspace
 
-  # Built on the same commit with the same version as the macOS app, so the release gets
+  # The Windows, Linux and macOS builds use the same commit and version, so the release gets
   # all of them at once and no updater ever sees a release without its file.
   windows:
     needs: test
@@ -100,6 +104,10 @@ jobs:
           fetch-depth: 0 # the tags decide the next version
       - uses: dtolnay/rust-toolchain@stable
       - run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
+      - uses: jakoch/install-vulkan-sdk-action@v1
+        with:
+          vulkan_version: 1.4.363.0
+          cache: true
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
@@ -107,10 +115,8 @@ jobs:
         env:
           # linuxdeploy is itself an AppImage; this runs it without FUSE.
           APPIMAGE_EXTRACT_AND_RUN: 1
-          # ggml tunes to the build host by default, and the runner has AVX-512: most user CPUs
-          # then crash with SIGILL. shortcut: AVX2 floor (Haswell, Zen and newer), use the
-          # dynamic-backends feature like Windows if older CPUs matter.
-          TRANSCRIBE_CMAKE_ARGS: -DGGML_NATIVE=OFF -DGGML_SSE42=ON -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DGGML_BMI2=ON
+          # The CPU tier (all of them ship, see build.rs) is picked at runtime, so no ISA floor.
+          # linuxdeploy also bundles libvulkan.so.1; that loader still uses the system's drivers.
         run: |
           version="$(scripts/set-version.sh)"
           python3 scripts/third-party-licenses.py > THIRD-PARTY-LICENSES.txt
@@ -124,8 +130,34 @@ jobs:
           path: Gapir-linux-x86_64.AppImage*
           if-no-files-found: error
 
+  macos:
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the tags decide the next version
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+      - name: Build, sign and package
+        env:
+          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          scripts/set-version.sh
+          scripts/package.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: macos
+          path: Gapir-macos-arm64.zip*
+          if-no-files-found: error
+
   release:
-    needs: [test, windows, linux]
+    needs: [test, macos, windows, linux]
     if: github.ref == 'refs/heads/main'
     runs-on: macos-latest
     timeout-minutes: 60
@@ -135,10 +167,8 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # the tags decide the next version
+      # Only for cargo in set-version.sh; nothing is built here.
       - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
 
       - name: Pick the version
         id: version
@@ -147,17 +177,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           version="$(scripts/set-version.sh)"
           echo "number=$version" >> "$GITHUB_OUTPUT"
-          # Committed here, pushed only after the build worked.
+          # Committed here, pushed only after the checks pass.
           if ! git diff --quiet; then
             git commit --quiet --all --message "chore: release v$version [skip ci]"
           fi
 
-      - name: Build, sign and package
-        env:
-          MACOS_CERT_P12: ${{ secrets.MACOS_CERT_P12 }}
-          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
-        run: scripts/package.sh
-
+      - uses: actions/download-artifact@v8
+        with:
+          name: macos
       - uses: actions/download-artifact@v8
         with:
           name: windows
@@ -173,7 +200,9 @@ jobs:
           check() { "$@" || { echo "::error::check failed: $*"; exit 1; }; }
           requirement() { codesign -d -r- "$1" 2>&1 | grep '^designated'; }
 
-          app=target/aarch64-apple-darwin/release/bundle/macos/Gapir.app
+          # Checks the app exactly as users get it, unpacked from the published zip.
+          ditto -x -k Gapir-macos-arm64.zip "$RUNNER_TEMP/built"
+          app="$RUNNER_TEMP/built/Gapir.app"
           binary="$app/Contents/MacOS/gapir"
           check [ "$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")" = "$VERSION" ]
           check [ "$(lipo -archs "$binary")" = "arm64" ]

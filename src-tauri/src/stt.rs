@@ -8,7 +8,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError, Sender};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use transcribe_cpp::{CancelToken, Model, RunOptions, Session, TimestampKind};
+use transcribe_cpp::{CancelToken, Model, RunOptions, Session, SessionOptions, TimestampKind};
 
 pub const MODEL: ModelSpec = ModelSpec {
     url: "https://github.com/SalikhovID/gapir/releases/download/model-rubaistt-v2-q5km/rubaistt-v2-medium-Q5_K_M.gguf",
@@ -102,8 +102,8 @@ struct Worker {
 
 impl Worker {
     fn run(mut self, jobs: mpsc::Receiver<Job>) {
-        // Windows builds load the CPU and Vulkan backends as DLLs; a missing GPU driver
-        // leaves only the CPU. A no-op where the backends are linked in (macOS).
+        // Windows and Linux builds load the CPU and Vulkan backends as shared libraries; a
+        // missing GPU driver leaves only the CPU. A no-op where they are linked in (macOS).
         if let Err(error) = transcribe_cpp::init_backends_default() {
             log::error!("speech backends failed to load: {error}");
         }
@@ -132,8 +132,18 @@ impl Worker {
             return true;
         }
         let started = Instant::now();
-        let loaded = Model::load(&self.path)
-            .and_then(|model| model.session().map(|session| Loaded { session, model }));
+        // On a 24-thread CPU the library default ran 30-60% slower than 8-12 threads, and 16
+        // swung from 2.6 to 28 s. On a GPU (Metal) the count made no difference.
+        let cores = std::thread::available_parallelism().map_or(4, |n| n.get());
+        let options = SessionOptions {
+            n_threads: (cores / 2).clamp(4, 12).min(cores) as i32,
+            ..SessionOptions::default()
+        };
+        let loaded = Model::load(&self.path).and_then(|model| {
+            model
+                .session_with(&options)
+                .map(|session| Loaded { session, model })
+        });
         match loaded {
             Ok(loaded) => {
                 let device = loaded.model.device().map(|d| d.description);
