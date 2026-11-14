@@ -7,7 +7,44 @@ fn main() {
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
         copy_speech_dlls();
     }
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("linux") {
+        stage_speech_modules();
+    }
     tauri_build::build()
+}
+
+/// The sys crate's rpath reaches only its own binaries, so gapir needs one to find
+/// libtranscribe.so in development; linuxdeploy rewrites it for the AppImage. The backend
+/// modules are dlopen'ed from libtranscribe's folder, so linuxdeploy cannot see them: stage them
+/// in `<profile>/speech-backends`, which tauri.linux.conf.json copies next to libtranscribe.
+fn stage_speech_modules() {
+    let source =
+        std::env::var("DEP_TRANSCRIBE_RUNTIME_DIR").expect("transcribe-cpp-sys is built shared");
+    println!("cargo:rustc-link-arg=-Wl,-rpath,{source}");
+    let out_dir = std::path::PathBuf::from(std::env::var("OUT_DIR").expect("cargo sets OUT_DIR"));
+    let staged = out_dir
+        .ancestors()
+        .nth(3)
+        .expect("OUT_DIR is inside the profile dir")
+        .join("speech-backends");
+    let _ = std::fs::remove_dir_all(&staged);
+    std::fs::create_dir_all(&staged).expect("create speech-backends");
+    // The modules find libggml-base.so.0 through $ORIGIN, also when linuxdeploy checks them.
+    // libtranscribe and libggml are linked, so linuxdeploy finds and copies them itself.
+    let mut count = 0;
+    for entry in std::fs::read_dir(&source)
+        .unwrap_or_else(|error| panic!("{source}: {error}"))
+        .flatten()
+    {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        let module = name.ends_with(".so") && name != "libggml-base.so";
+        if name.starts_with("libggml-") && (module || name == "libggml-base.so.0") {
+            std::fs::copy(entry.path(), staged.join(&*name)).expect("copy speech module");
+            count += 1;
+        }
+    }
+    assert!(count > 0, "no ggml backend modules in {source}");
 }
 
 /// transcribe-cpp-sys puts its DLLs next to the binaries only when its own build script runs. A

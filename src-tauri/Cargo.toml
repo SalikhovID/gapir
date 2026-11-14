@@ -40,11 +40,14 @@ objc2-foundation = { version = "0.3", features = ["NSArray", "NSBundle", "NSDict
 tauri-nspanel = "2.1.1"
 transcribe-cpp = { version = "0.4.1", features = ["metal"] }
 
-[target.'cfg(windows)'.dependencies]
-# Backends as DLLs chosen at runtime: Vulkan where the GPU driver has it, otherwise the CPU.
+[target.'cfg(any(windows, target_os = "linux"))'.dependencies]
+# Backends as libraries chosen at runtime: Vulkan where the GPU driver has it, otherwise the
+# best CPU tier.
 transcribe-cpp = { version = "0.4.1", features = ["vulkan", "dynamic-backends"] }
-# Only so build.rs gets DEP_TRANSCRIBE_RUNTIME_DIR, the folder with those DLLs.
+# Only so build.rs gets DEP_TRANSCRIBE_RUNTIME_DIR, the folder with those libraries.
 transcribe-cpp-sys = { version = "0.4.1", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_System_DataExchange", "Win32_System_Diagnostics_Debug", "Win32_System_Memory", "Win32_System_SystemInformation", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
